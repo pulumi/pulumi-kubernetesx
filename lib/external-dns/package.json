@@ -1,0 +1,11 @@
+{
+  "name": "external-dns",
+  "version": "0.0.1",
+  "dependencies": {
+    "@types/node": "^10.12.18",
+    "typescript": "^3.2.4",
+    "@pulumi/kubernetes": "latest",
+    "@pulumi/pulumi": "latest"
+  },
+  "peerDependencies": {}
+}
