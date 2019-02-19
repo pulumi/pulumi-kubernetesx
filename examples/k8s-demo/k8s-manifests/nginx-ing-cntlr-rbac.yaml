@@ -1,0 +1,129 @@
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: default-service-account
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - endpoints
+  - nodes
+  - pods
+  - secrets
+  verbs:
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - "extensions"
+  resources:
+  - ingresses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - "extensions"
+  resources:
+  - ingresses/status
+  verbs:
+  - update
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: default-service-account
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - pods
+  - secrets
+  - namespaces
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  resourceNames:
+  # Defaults to "<election-id>-<ingress-class>"
+  # In this setup its specifically: "<ingress-controller-leader>-<my-nginx-class>".
+  # This has to be adapted if you change either parameter
+  # (--election-id, and/or --ingress-class) when launching the nginx-ing-cntlr.
+  # See for more info: https://github.com/kubernetes/ingress/tree/master/docs/deploy/rbac.md#namespace-permissions
+  - "ingress-controller-leader-my-nginx"
+  verbs:
+  - get
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  verbs:
+  - get
+  - create
+  - update
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: default-service-account
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: default
+roleRef:
+  # The roleRef specifies the Role to give to the ServiceAccount.
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: default-service-account
+
+---
+
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: default-service-account
+subjects:
+  # The subject is the target service account
+  - kind: ServiceAccount
+    name: default
+    namespace: default
+roleRef:
+  # The roleRef specifies the ClusterRole to give to the ServiceAccount.
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: default-service-account

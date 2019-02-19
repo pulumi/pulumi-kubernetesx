@@ -1,0 +1,17 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: k8s-demo
+  labels:
+    app: k8s-demo
+  annotations:
+    kubernetes.io/ingress.class: my-nginx
+spec:
+  rules:
+  - host: apps.example.com
+    http:
+      paths:
+        - path: "/foobar"
+          backend:
+            serviceName: k8s-demo
+            servicePort: http
