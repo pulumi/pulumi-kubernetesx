@@ -1,3 +1,0 @@
-name: k8s-demo
-runtime: nodejs
-description: A Kubernetes Deployment, Service, Ingress & IngressController

@@ -107,6 +107,7 @@ if (Object.keys(externalDns).length == 0) {
 // Export the ExternalDns nme
 export let extDnsName = extDns.deployment.metadata.apply(m => m.name);
 
+/*
 //------------------------------------------------------------------------------
 // k8s-demo
 
@@ -192,7 +193,7 @@ const ing = new k8s.extensions.v1beta1.Ingress(config.demoName,
         spec: {
             rules: [
                 {
-                    host: "meetup.apps.pulumi.tech",
+                    host: config.demoHostname,
                     http: {
                         paths: [
                             {
@@ -215,10 +216,12 @@ const ing = new k8s.extensions.v1beta1.Ingress(config.demoName,
 
 // Export the Ingress Name and Address
 export let appIngressName = ing.metadata.apply(m => m.name)
+export let appIngressHost = ing.spec.apply(s => s.rules[0]
 export let appIngressHostname = ing.status.apply(status => status.loadBalancer.ingress[0].hostname)
 
 //------------------------------------------------------------------------------
 // curl Command
 
 // Export the curl command to hit the ingress endpoint for the k8s-demo
-export let appCurlCommand = pulumi.concat("curl -v -H 'Host: apps.example.com' http://", appIngressHostname, "/foobar")
+export let appCurlCommand = pulumi.concat("curl -v -H 'Host: ", config.demoHostname,'" http://", appIngressHostname, "/foobar")
+*/

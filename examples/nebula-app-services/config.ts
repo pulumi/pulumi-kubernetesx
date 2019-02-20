@@ -29,5 +29,6 @@ export const config = {
     // Demo k8s name, namespace, and image.
     demoName: "k8s-demo",
     demoNamespace: "k8s-demo",
+    demoHostname: "meetup.apps.pulumi.tech",
     demoImage: "quay.io/metral/k8s-demo:0.0.1",
 };
