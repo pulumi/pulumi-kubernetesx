@@ -5,6 +5,7 @@ import * as nginxIngCntlr from "./nginx-ing-cntlr";
 import { config } from "./config";
 
 export type NginxIngressControllerOptions = {
+    provider?: k8s.Provider;
     namespace?: pulumi.Input<string>;
     ingressClass?: pulumi.Input<string>;
     svcPortType?: pulumi.Input<string>;
@@ -34,7 +35,8 @@ export class NginxIngressController extends pulumi.ComponentResource {
     ){
         super(config.pulumiComponentNamespace, name, args, opts);
 
-        if (args.namespace == undefined ||
+        if (args.provider == undefined ||
+            args.namespace == undefined ||
             args.ingressClass == undefined ||
             args.svcPortType == undefined ||
             args.svcPorts == undefined
@@ -43,26 +45,26 @@ export class NginxIngressController extends pulumi.ComponentResource {
         }
 
         // NGINX ServiceAccount
-        this.serviceAccount = nginxIngCntlrRBAC.makeNginxServiceAccount(args.namespace)
+        this.serviceAccount = nginxIngCntlrRBAC.makeNginxServiceAccount(args.provider, args.namespace)
         this.serviceAccountName = this.serviceAccount.metadata.apply(m => m.name);
 
         // NGINX RBAC Role & ClusterRole
-        this.clusterRole = nginxIngCntlrRBAC.makeNginxClusterRole();
+        this.clusterRole = nginxIngCntlrRBAC.makeNginxClusterRole(args.provider);
         this.clusterRoleName = this.clusterRole.metadata.apply(m => m.name);
-        this.clusterRoleBinding = nginxIngCntlrRBAC.makeNginxClusterRoleBinding(args.namespace, this.serviceAccountName, this.clusterRoleName);
+        this.clusterRoleBinding = nginxIngCntlrRBAC.makeNginxClusterRoleBinding(args.provider, args.namespace, this.serviceAccountName, this.clusterRoleName);
 
-        this.role = nginxIngCntlrRBAC.makeNginxRole(args.namespace, args.ingressClass);
+        this.role = nginxIngCntlrRBAC.makeNginxRole(args.provider, args.namespace, args.ingressClass);
         this.roleName = this.role.metadata.apply(m => m.name);
-        this.roleBinding = nginxIngCntlrRBAC.makeNginxRoleBinding(args.namespace, this.serviceAccountName, this.roleName);
+        this.roleBinding = nginxIngCntlrRBAC.makeNginxRoleBinding(args.provider, args.namespace, this.serviceAccountName, this.roleName);
 
         // NGINX Backend Deployment and Service
-        this.defaultBackendService = nginxIngCntlr.makeNginxDefaultBackendService(args.namespace);
+        this.defaultBackendService = nginxIngCntlr.makeNginxDefaultBackendService(args.provider, args.namespace);
         this.defaultBackendServiceName = this.defaultBackendService.metadata.apply(m => m.name);
-        this.defaultBackendDeployment = nginxIngCntlr.makeNginxDefaultBackendDeployment(args.namespace);
+        this.defaultBackendDeployment = nginxIngCntlr.makeNginxDefaultBackendDeployment(args.provider, args.namespace);
 
         // NGINX Deployment and Service
-        this.service = nginxIngCntlr.makeNginxService(args.namespace, args.svcPortType, args.svcPorts);
+        this.service = nginxIngCntlr.makeNginxService(args.provider, args.namespace, args.svcPortType, args.svcPorts);
         this.serviceName = this.service.metadata.apply(m => m.name);
-        this.deployment = nginxIngCntlr.makeNginxDeployment(args.namespace, args.ingressClass, this.serviceAccountName, this.defaultBackendServiceName, this.serviceName);
+        this.deployment = nginxIngCntlr.makeNginxDeployment(args.provider, args.namespace, args.ingressClass, this.serviceAccountName, this.defaultBackendServiceName, this.serviceName);
     }
 }

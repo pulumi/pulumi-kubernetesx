@@ -5,6 +5,7 @@ import * as externalDns from "./external-dns";
 import { config } from "./config";
 
 export type ExternalDnsOptions = {
+    provider?: k8s.Provider;
     namespace?: pulumi.Input<string>;
     iamRoleArn?: pulumi.Input<string>;
     primaryContainerArgs?: pulumi.Input<any>;
@@ -25,7 +26,8 @@ export class ExternalDns extends pulumi.ComponentResource {
     ){
         super(config.pulumiComponentNamespace, name, args, opts);
 
-        if (args.namespace == undefined ||
+        if (args.provider == undefined ||
+            args.namespace == undefined ||
             args.iamRoleArn == undefined ||
             args.primaryContainerArgs == undefined
         ){
@@ -33,15 +35,15 @@ export class ExternalDns extends pulumi.ComponentResource {
         }
 
         // ServiceAccount
-        this.serviceAccount = externalDnsRbac.makeExternalDnsServiceAccount(args.namespace)
+        this.serviceAccount = externalDnsRbac.makeExternalDnsServiceAccount(args.provider, args.namespace)
         this.serviceAccountName = this.serviceAccount.metadata.apply(m => m.name);
 
         // RBAC ClusterRole
-        this.clusterRole = externalDnsRbac.makeExternalDnsClusterRole();
+        this.clusterRole = externalDnsRbac.makeExternalDnsClusterRole(args.provider);
         this.clusterRoleName = this.clusterRole.metadata.apply(m => m.name);
-        this.clusterRoleBinding = externalDnsRbac.makeExternalDnsClusterRoleBinding(args.namespace, this.serviceAccountName, this.clusterRoleName);
+        this.clusterRoleBinding = externalDnsRbac.makeExternalDnsClusterRoleBinding(args.provider, args.namespace, this.serviceAccountName, this.clusterRoleName);
 
         // Deployment
-        this.deployment = externalDns.makeExternalDnsDeployment(args.namespace, this.serviceAccountName, args.iamRoleArn, args.primaryContainerArgs);
+        this.deployment = externalDns.makeExternalDnsDeployment(args.provider, args.namespace, this.serviceAccountName, args.iamRoleArn, args.primaryContainerArgs);
     }
 }

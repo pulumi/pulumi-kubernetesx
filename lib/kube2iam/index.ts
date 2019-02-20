@@ -5,6 +5,7 @@ import * as kube2iam from "./kube2iam";
 import { config } from "./config";
 
 export type Kube2IamOptions = {
+    provider?: k8s.Provider;
     namespace?: pulumi.Input<string>;
     primaryContainerArgs?: pulumi.Input<any>;
     ports?: pulumi.Input<any>;
@@ -25,7 +26,8 @@ export class Kube2Iam extends pulumi.ComponentResource {
     ){
         super(config.pulumiComponentNamespace, name, args, opts);
 
-        if (args.namespace == undefined ||
+        if (args.provider == undefined ||
+            args.namespace == undefined ||
             args.primaryContainerArgs == undefined ||
             args.ports == undefined
         ){
@@ -33,15 +35,15 @@ export class Kube2Iam extends pulumi.ComponentResource {
         }
 
         // ServiceAccount
-        this.serviceAccount = kube2iamRbac.makeKube2IamServiceAccount(args.namespace)
+        this.serviceAccount = kube2iamRbac.makeKube2IamServiceAccount(args.provider, args.namespace)
         this.serviceAccountName = this.serviceAccount.metadata.apply(m => m.name);
 
         // RBAC ClusterRole
-        this.clusterRole = kube2iamRbac.makeKube2IamClusterRole();
+        this.clusterRole = kube2iamRbac.makeKube2IamClusterRole(args.provider);
         this.clusterRoleName = this.clusterRole.metadata.apply(m => m.name);
-        this.clusterRoleBinding = kube2iamRbac.makeKube2IamClusterRoleBinding(args.namespace, this.serviceAccountName, this.clusterRoleName);
+        this.clusterRoleBinding = kube2iamRbac.makeKube2IamClusterRoleBinding(args.provider, args.namespace, this.serviceAccountName, this.clusterRoleName);
 
         // DaemonSet
-        this.daemonSet = kube2iam.makeKube2IamDaemonSet(args.namespace, this.serviceAccountName, args.primaryContainerArgs, args.ports);
+        this.daemonSet = kube2iam.makeKube2IamDaemonSet(args.provider, args.namespace, this.serviceAccountName, args.primaryContainerArgs, args.ports);
     }
 }
