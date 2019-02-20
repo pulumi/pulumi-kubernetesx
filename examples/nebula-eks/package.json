@@ -1,0 +1,10 @@
+{
+    "name": "nebula",
+    "dependencies": {
+        "@types/node": "latest",
+        "@pulumi/aws": "latest",
+        "@pulumi/awsx": "latest",
+        "@pulumi/eks": "latest",
+        "@pulumi/pulumi": "latest"
+    }
+}
