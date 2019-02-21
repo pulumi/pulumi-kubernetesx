@@ -1,0 +1,12 @@
+{
+  "name": "fluentd-cloudwatch",
+  "version": "0.0.1",
+  "dependencies": {
+    "@pulumi/aws": "^0.16.8",
+    "@pulumi/kubernetes": "latest",
+    "@pulumi/pulumi": "latest",
+    "@types/node": "^10.12.18",
+    "typescript": "^3.2.4"
+  },
+  "peerDependencies": {}
+}

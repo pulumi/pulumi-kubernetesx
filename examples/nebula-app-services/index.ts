@@ -58,7 +58,7 @@ let k2i = new kube2iam.Kube2Iam(config.name, {
     namespace: nsName,
     primaryContainerArgs: pulumi.all([
         "--app-port=8181",
-        "--base-role-arn=" + config.kube2iamRoleArn,
+        pulumi.concat("--base-role-arn=", config.kube2IamBaseRoleArn),
         "--iptables=true",
         "--host-ip=$(HOST_IP)",
         "--host-interface=eni+",
@@ -100,7 +100,7 @@ let extDns = new externalDns.ExternalDns(config.name, {
     ],
 });
 
-if (Object.keys(externalDns).length == 0) {
+if (Object.keys(extDns).length == 0) {
     throw new Error("The externalDns object is empty and cannot be created. Check for missing parameters.")
 }
 

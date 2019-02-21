@@ -2,6 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 
 // Existing nebula EKS cluster Pulumi stack.
 const nebulaStack = new pulumi.StackReference(`metral/nebula/dev`)
+const nebulaClusterServicesStack = new pulumi.StackReference(`metral/nebula-cluster-services/dev`)
 
 export const config = {
     // Cluster details from nebula cluster output.
@@ -17,14 +18,14 @@ export const config = {
     nginxIngressClass: "my-nginx-class",
 
     // Base IAM Role ARN for kube2iam to allow Workers to assume other roles.
-    kube2iamRoleArn: "arn:aws:iam::153052954103:role/k8sRoleKube2Iam",
+    kube2IamBaseRoleArn: nebulaClusterServicesStack.getOutput("kube2IamArnPrefix"),
 
     // DNS Hosted Zone to use with external-dns.
     externalDnsDomainFilter: "pulumi.tech",
 
     // IAM Role for external-dns DaemonSet to manage R53 record sets in a
     // Hosted Zone.
-    externalDnsRoleArn: "arn:aws:iam::153052954103:role/k8sRoleExternalDns",
+    externalDnsRoleArn: nebulaClusterServicesStack.getOutput("externalDnsRoleArn"),
 
     // Demo k8s name, namespace, and image.
     demoName: "k8s-demo",
