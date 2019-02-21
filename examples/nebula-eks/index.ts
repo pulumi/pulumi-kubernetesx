@@ -44,7 +44,7 @@ const cluster = new eks.Cluster(name, {
 
 // Export the cluster name
 export const clusterName = cluster.core.cluster.name;
-//
+
 // Export the cluster's Node / Worker instance IAM Role ARN
 export const clusterRoleArn = cluster.core.cluster.roleArn;
 const arnPrefix: pulumi.Output<string> = clusterRoleArn.apply(s => s.split("/")).apply(s => s[0]);
