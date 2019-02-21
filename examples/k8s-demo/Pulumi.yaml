@@ -1,0 +1,3 @@
+name: k8s-demo
+runtime: nodejs
+description: A Kubernetes App - Deployment, Service, Ingress
