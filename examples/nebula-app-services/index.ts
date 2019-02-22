@@ -13,7 +13,7 @@ const provider = new k8s.Provider("eks-k8s", {
 //------------------------------------------------------------------------------
 // Namespace
 
-// Create a k8s-demo Namespace
+// Create a Namespace
 const ns = new k8s.core.v1.Namespace(
     config.namespace,
     undefined,
