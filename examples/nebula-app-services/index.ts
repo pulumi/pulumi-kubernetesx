@@ -28,7 +28,7 @@ export let nsName = ns.metadata.apply(m => m.name);
 // NGINX
 
 // Create the NGINX k8s resource stack
-let nginxIngressController = new nginxIngCntlr.NginxIngressController(config.nginxName, {
+let nginxIngressController = new nginxIngCntlr.NginxIngressController("nginx-ing-cntlr", {
     provider: provider,
     namespace: nsName,
     ingressClass: config.nginxIngressClass,
@@ -48,44 +48,11 @@ if (Object.keys(nginxIngressController).length == 0) {
 
 // Export the NGINX nme
 export let nginxIngressControllerName = nginxIngressController.deployment.metadata.apply(m => m.name);
-
-//------------------------------------------------------------------------------
-// kube2iam
-
-// Create the kube2iam k8s resource stack
-let k2i = new kube2iam.Kube2Iam(config.name, {
-    provider: provider,
-    namespace: nsName,
-    primaryContainerArgs: pulumi.all([
-        "--app-port=8181",
-        pulumi.concat("--base-role-arn=", config.kube2IamBaseRoleArn),
-        "--iptables=true",
-        "--host-ip=$(HOST_IP)",
-        "--host-interface=eni+",
-        "--verbose"
-    ]),
-    ports: [
-        {
-            containerPort: 8181,
-            hostPort: 8181,
-            protocol: "TCP",
-            name: "http",
-        },
-    ],
-});
-
-if (Object.keys(k2i).length == 0) {
-    throw new Error("The kube2iam object is empty and cannot be created. Check for missing parameters.")
-}
-
-// Export the kube2iam nme
-export let kube2iamName = k2i.daemonSet.metadata.apply(m => m.name);
-
 //------------------------------------------------------------------------------
 // external-dns
 
 // Create the External DNS k8s resource stack
-let extDns = new externalDns.ExternalDns(config.name, {
+let extDns = new externalDns.ExternalDns("external-dns", {
     provider: provider,
     namespace: nsName,
     iamRoleArn: config.externalDnsRoleArn,
