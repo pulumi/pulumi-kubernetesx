@@ -2,6 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 import * as k8s from "@pulumi/kubernetes";
 import * as iam from "./iam";
+import * as kube2iam from "../../lib/kube2iam";
 import * as fluentd from "../../lib/fluentd-cloudwatch";
 import { config } from "./config";
 
@@ -62,7 +63,7 @@ const kube2iamPolicy = this.createPolicy(
 // instances.
 export const kube2IamArnPrefix = pulumi.concat(config.instanceRoleArn.apply(s => s.split("/")).apply(s => s[0]), "/");
 const roleName = config.instanceRoleArn.apply(s => s.split("/")).apply(s => s[1]);
-export const role = aws.iam.Role.get("exitingRole", roleName)
+export const role = aws.iam.Role.get("existingInstanceRole", roleName)
 iam.addPoliciesToExistingRole(
     "kube2IamPolicy",
     role,
@@ -70,6 +71,38 @@ iam.addPoliciesToExistingRole(
         "kube2IamPolicy": kube2iamPolicy,
     },
 );
+
+//------------------------------------------------------------------------------
+// kube2iam
+
+// Create the kube2iam k8s resource stack
+let k2i = new kube2iam.Kube2Iam("kube2iam", {
+    provider: provider,
+    namespace: nsName,
+    primaryContainerArgs: pulumi.all([
+        "--app-port=8181",
+        pulumi.concat("--base-role-arn=", kube2IamArnPrefix),
+        "--iptables=true",
+        "--host-ip=$(HOST_IP)",
+        "--host-interface=eni+",
+        "--verbose"
+    ]),
+    ports: [
+        {
+            containerPort: 8181,
+            hostPort: 8181,
+            protocol: "TCP",
+            name: "http",
+        },
+    ],
+});
+
+if (Object.keys(k2i).length == 0) {
+    throw new Error("The kube2iam object is empty and cannot be created. Check for missing parameters.")
+}
+
+// Export the kube2iam nme
+export let kube2iamName = k2i.daemonSet.metadata.apply(m => m.name);
 //------------------------------------------------------------------------------
 // Setup IAM for external-dns
 

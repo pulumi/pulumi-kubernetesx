@@ -5,6 +5,7 @@ const nebulaStack = new pulumi.StackReference(`metral/nebula/dev`)
 
 export const config = {
     // Cluster details from nebula cluster output.
+    clusterName: nebulaStack.getOutput("clusterName"),
     instanceRoleArn: nebulaStack.getOutput("instanceRoleArn"),
     kubeconfig: nebulaStack.getOutput("kubeconfig"),
 
