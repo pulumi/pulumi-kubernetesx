@@ -2,11 +2,13 @@ import * as pulumi from "@pulumi/pulumi";
 import * as k8s from "@pulumi/kubernetes";
 import { config } from "./config";
 
-// Create a ServiceAccount for NGINX
+// Create a ServiceAccount.
 export function makeNginxServiceAccount(
+    name: string,
     provider: k8s.Provider,
     namespace: pulumi.Input<string>): k8s.core.v1.ServiceAccount {
-        return new k8s.core.v1.ServiceAccount(config.appName,
+        return new k8s.core.v1.ServiceAccount(
+            name,
             {
                 metadata: {
                     namespace: namespace,
@@ -14,43 +16,45 @@ export function makeNginxServiceAccount(
             },
             {
                 provider: provider,
-            }
-        )
+            },
+        );
     }
 
-// Create a ClusterRole for NGINX
+// Create a ClusterRole.
 export function makeNginxClusterRole(
+    name: string,
     provider: k8s.Provider): k8s.rbac.v1.ClusterRole {
-        return new k8s.rbac.v1.ClusterRole(config.appName,
+        return new k8s.rbac.v1.ClusterRole(
+            name,
             {
                 rules: [
                     {
-                        apiGroups:[""],
+                        apiGroups: [""],
                         resources: ["configmaps", "endpoints", "nodes", "pods", "secrets"],
                         verbs: ["list", "watch"],
                     },
                     {
-                        apiGroups:[""],
+                        apiGroups: [""],
                         resources: ["nodes"],
                         verbs: ["get"],
                     },
                     {
-                        apiGroups:[""],
+                        apiGroups: [""],
                         resources: ["services"],
                         verbs: ["get", "list", "watch"],
                     },
                     {
-                        apiGroups:["extensions"],
+                        apiGroups: ["extensions"],
                         resources: ["ingresses"],
                         verbs: ["get", "list", "watch"],
                     },
                     {
-                        apiGroups:[""],
+                        apiGroups: [""],
                         resources: ["events"],
                         verbs: ["create", "patch"],
                     },
                     {
-                        apiGroups:["extensions"],
+                        apiGroups: ["extensions"],
                         resources: ["ingresses/status"],
                         verbs: ["update"],
                     },
@@ -58,17 +62,19 @@ export function makeNginxClusterRole(
             },
             {
                 provider: provider,
-            }
-        )
+            },
+        );
     }
 
-// Create a ClusterRoleBinding for NGINX
+// Create a ClusterRoleBinding of the ServiceAccount -> ClusterRole.
 export function makeNginxClusterRoleBinding(
+    name: string,
     provider: k8s.Provider,
     namespace: pulumi.Input<string>,
     serviceAccountName: pulumi.Input<string>,
     clusterRoleName: pulumi.Input<string>): k8s.rbac.v1.ClusterRoleBinding {
-        return new k8s.rbac.v1.ClusterRoleBinding(config.appName,
+        return new k8s.rbac.v1.ClusterRoleBinding(
+            name,
             {
                 subjects: [
                     {
@@ -85,45 +91,47 @@ export function makeNginxClusterRoleBinding(
             },
             {
                 provider: provider,
-            }
-        )
+            },
+        );
     }
 
-// Create a Role for NGINX
+// Create a Role.
 export function makeNginxRole(
+    name: string,
     provider: k8s.Provider,
     namespace: pulumi.Input<string>,
     ingressClass: pulumi.Input<string>): k8s.rbac.v1.Role {
-        return new k8s.rbac.v1.Role(config.appName,
+        return new k8s.rbac.v1.Role(
+            name,
             {
                 metadata: {
                     namespace: namespace,
                 },
                 rules: [
                     {
-                        apiGroups:[""],
+                        apiGroups: [""],
                         resources: ["configmaps", "pods", "secrets", "namespaces"],
                         verbs: ["get"],
                     },
                     {
-                        apiGroups:[""],
+                        apiGroups: [""],
                         resources: ["configmaps"],
                         // Defaults to "<election-id>-<ingress-class>"
                         // In this setup its specifically: "<ingress-controller-leader>-<my-nginx-class>".
                         // This has to be adapted if you change either parameter
                         // (--election-id, and/or --ingress-class) when launching
-                        // the nginx-ing-cntlr.
-                        // See for more info: https://github.com/kubernetes/ingress/tree/master/docs/deploy/rbac.md#namespace-permissions
+                        // the nginx-ing-cntlr. See for more info:
+                        // https://github.com/kubernetes/ingress/tree/master/docs/deploy/rbac.md#namespace-permissions
                         resourceNames: ["ingress-controller-leader-" + ingressClass],
                         verbs: ["get", "update"],
                     },
                     {
-                        apiGroups:[""],
+                        apiGroups: [""],
                         resources: ["configmaps"],
                         verbs: ["create"],
                     },
                     {
-                        apiGroups:[""],
+                        apiGroups: [""],
                         resources: ["endpoints"],
                         verbs: ["get", "create", "update"],
                     },
@@ -131,17 +139,19 @@ export function makeNginxRole(
             },
             {
                 provider: provider,
-            }
-        )
+            },
+        );
     }
 
-// Create a RoleBinding for NGINX
+// Create a RoleBinding of the ServiceAccount -> Role.
 export function makeNginxRoleBinding(
+    name: string,
     provider: k8s.Provider,
     namespace: pulumi.Input<string>,
     serviceAccountName: pulumi.Input<string>,
     roleName: pulumi.Input<string>): k8s.rbac.v1.RoleBinding {
-        return new k8s.rbac.v1.RoleBinding(config.appName,
+        return new k8s.rbac.v1.RoleBinding(
+            name,
             {
                 metadata: {
                     namespace: namespace,
@@ -161,6 +171,6 @@ export function makeNginxRoleBinding(
             },
             {
                 provider: provider,
-            }
-        )
+            },
+        );
     }
