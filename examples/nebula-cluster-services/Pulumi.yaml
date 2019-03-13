@@ -1,3 +1,0 @@
-name: nebula-cluster-services
-runtime: nodejs
-description: Kubernetes Cluster Services - Fluentd-CloudWatch Logs for Cluster & Pod logs, and IAM Setup (kube2iam, external-dns, fluentd-cloudwatch).

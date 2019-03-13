@@ -2,29 +2,20 @@ import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 import * as k8s from "@pulumi/kubernetes";
 import * as iam from "./iam";
-import * as kube2iam from "../../lib/kube2iam";
-import * as fluentd from "../../lib/fluentd-cloudwatch";
+import * as kx from "../../nodejs/kx";
 import { config } from "./config";
 
-// Helper function to create a new IAM Policy
-export function createPolicy(
-    name: string,
-    args: aws.iam.PolicyArgs): aws.iam.Policy
-{
-    let policyArgs: aws.iam.PolicyArgs = args;
-    return new aws.iam.Policy(name, policyArgs);
-}
-
-//------------------------------------------------------------------------------
-// Setup Pulumi Kubernetes provider and create namespace
-
+// Setup Pulumi Kubernetes provider.
 const provider = new k8s.Provider("eks-k8s", {
     kubeconfig: config.kubeconfig.apply(JSON.stringify),
 });
 
-// Namespace
+// Get the IAM role name of the Kubernetes Node / Worker instance profile.
+const instanceRoleName = config.instanceRoleArn.apply(s => s.split("/")).apply(s => s[1]);
 
-// Create a cluster-services Namespace
+// -- Create Namespace --
+
+// Create a cluster-services Namespace.
 const ns = new k8s.core.v1.Namespace(
     config.namespace,
     undefined,
@@ -33,17 +24,18 @@ const ns = new k8s.core.v1.Namespace(
     }
 );
 
-// Export the Namespace name
-export let nsName = ns.metadata.apply(m => m.name);
-//------------------------------------------------------------------------------
-// Setup IAM for kube2iam
+// Export the Namespace name.
+export const nsName = ns.metadata.apply(m => m.name);
 
-// Create a new IAM Policy for kube2iam
-const kube2iamPolicy = this.createPolicy(
+// -- Setup IAM for kube2iam --
+
+// Create a new IAM Policy for kube2iam to allow k8s Nodes/Workers to assume an
+// IAM role.
+const kube2iamPolicy = iam.createPolicy(
     "kubeIamPolicyKube2Iam",
     {
         description:
-        "Allows Kubernetes Workers to assume any role specified by a Pod's annotation, managed by kube2iam.",
+        "Allows Kubernetes Workers to assume any rolespecified by a Pod's annotation.",
         policy: JSON.stringify(
             {
                 Version: "2012-10-17",
@@ -59,24 +51,23 @@ const kube2iamPolicy = this.createPolicy(
     },
 );
 
-// Attach the kube2iam policy to an existing AWS Role for the Node / Worker
-// instances.
-export const kube2IamArnPrefix = pulumi.concat(config.instanceRoleArn.apply(s => s.split("/")).apply(s => s[0]), "/");
-const roleName = config.instanceRoleArn.apply(s => s.split("/")).apply(s => s[1]);
-export const role = aws.iam.Role.get("existingInstanceRole", roleName)
+// Attach the kube2iam policy to the node/instance AWS Role for the
+// Kubernetes Nodes / Workers.
+const role = aws.iam.Role.get("existingInstanceRole", instanceRoleName)
 iam.addPoliciesToExistingRole(
     "kube2IamPolicy",
     role,
     {
-        "kube2IamPolicy": kube2iamPolicy,
+        "kube2IamPolicy": kube2iamPolicy.arn,
     },
 );
 
-//------------------------------------------------------------------------------
-// kube2iam
+// -- Deploy kube2iam --
 
-// Create the kube2iam k8s resource stack
-let k2i = new kube2iam.Kube2Iam("kube2iam", {
+// Create the kube2iam k8s resource stack.
+export const kube2IamArnPrefix = pulumi.concat(config.instanceRoleArn.apply(s => s.split("/")).apply(s => s[0]), "/");
+
+const k2i = new kx.aws.Kube2Iam("kube2iam", {
     provider: provider,
     namespace: nsName,
     primaryContainerArgs: pulumi.all([
@@ -102,12 +93,12 @@ if (Object.keys(k2i).length == 0) {
 }
 
 // Export the kube2iam nme
-export let kube2iamName = k2i.daemonSet.metadata.apply(m => m.name);
-//------------------------------------------------------------------------------
-// Setup IAM for external-dns
+// export const kube2iamName = k2i.daemonSet.metadata.apply(m => m.name);
 
-// Create a new IAM Policy for external-dns
-const externalDnsPolicy = this.createPolicy(
+// -- Setup IAM for external-dns --
+
+// Create a new IAM Policy for external-dns to manage R53 record sets.
+const externalDnsPolicy = iam.createPolicy(
     "kubeIamPolicyExternalDns",
     {
         description:
@@ -147,20 +138,20 @@ const externalDnsRole = iam.newRoleWithPolicies(
     {
         description: 
         "Allows k8s external-dns to manage R53 Hosted Zone records.",
-        assumeRolePolicy: config.instanceRoleArn.apply(iam.assumeRolePolicy),
+        assumeRolePolicy: config.instanceRoleArn.apply(iam.assumeUserRolePolicy),
     },
     {
-        "externalDnsPolicy": externalDnsPolicy,
+        "externalDnsPolicy": externalDnsPolicy.arn,
     },
 );
 
 // Export the IAM Role ARN
 export const externalDnsRoleArn = externalDnsRole.arn;
-//------------------------------------------------------------------------------
-// Setup IAM for fluentd-cloudwatch
 
-// Create a new IAM Policy for fluentd-cloudwatch
-const fluentdCloudWatchPolicy = this.createPolicy(
+// -- Setup IAM for fluentd-cloudwatch --
+
+// Create a new IAM Policy for fluentd-cloudwatch to manage CloudWatch Logs.
+const fluentdCloudWatchPolicy = iam.createPolicy(
     "kubeIamPolicyFluentdCloudWatch",
     {
         description:
@@ -188,32 +179,47 @@ const fluentdCloudWatchPolicy = this.createPolicy(
     },
 );
 
-// Create a new IAM Role for fluentd-cloudwatch
+// Create a new IAM Role for fluentd-cloudwatch.
 const fluentdCloudWatchRole = iam.newRoleWithPolicies(
     "kubeIamRoleFluentdCloudWatch",
     {
         description: 
         "Allows k8s fluentd-cloudwatch to store k8s cluster and Pod logs in CloudWatch Logs.",
-        assumeRolePolicy: config.instanceRoleArn.apply(iam.assumeRolePolicy),
+        assumeRolePolicy: config.instanceRoleArn.apply(iam.assumeUserRolePolicy),
     },
     {
-        fluentdCloudWatchPolicy: fluentdCloudWatchPolicy,
+        "fluentdCloudWatchPolicy": fluentdCloudWatchPolicy.arn,
     },
 );
 
 // Export the IAM Role ARN
 export const fluentdCloudWatchRoleArn = fluentdCloudWatchRole.arn;
 
-//------------------------------------------------------------------------------
-// fluentd-cloudwatch
+// -- Deploy fluentd-cloudwatch --
 
 // Create the fluentd-cloudwatch k8s resource stack
-export const fluentdCloudWatch = new fluentd.FluentdCloudWatch("fluentd-cloudwatch", {
+export const fluentdCloudWatch = new kx.aws.FluentdCloudWatch("fluentd-cloudwatch", {
     provider: provider,
     namespace: nsName,
     iamRoleArn: fluentdCloudWatchRoleArn,
 });
 
 if (Object.keys(fluentdCloudWatch).length == 0) {
-    throw new Error("The externalDns object is empty and cannot be created. Check for missing parameters.")
+    throw new Error("The fluentdCloudWatch object is empty and cannot be created. Check for missing parameters.")
 }
+
+// -- Deploy Datadog --
+
+// Create the Datadog k8s resource stack
+let datadog = new kx.apps.Datadog("datadog", {
+    apiKey: config.datadogApiKey,
+    namespace: nsName,
+    provider: provider,
+});
+
+if (Object.keys(datadog).length == 0) {
+    throw new Error("The Datadog object is empty and cannot be created. Check for missing parameters.")
+}
+
+// Export the name
+export let datadogName = datadog.daemonSetName;
