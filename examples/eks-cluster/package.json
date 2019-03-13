@@ -1,10 +1,9 @@
 {
-    "name": "nebula",
+    "name": "kx-eks-cluster",
     "dependencies": {
-        "@pulumi/aws": "latest",
+        "@pulumi/pulumi": "latest",
         "@pulumi/awsx": "latest",
         "@pulumi/eks": "latest",
-        "@pulumi/pulumi": "^0.16.14",
         "@types/node": "latest"
     }
 }
