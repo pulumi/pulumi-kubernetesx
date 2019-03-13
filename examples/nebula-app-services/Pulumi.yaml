@@ -1,3 +1,0 @@
-name: nebula-app-services
-runtime: nodejs
-description: Kubernetes Shared App Services - NGINX IngressController, kube2iam, and external-dns
