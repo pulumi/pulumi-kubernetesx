@@ -24,6 +24,15 @@ export function newRoleWithPolicies(
     return role;
 }
 
+// Helper function to create a new IAM Policy.
+export function createPolicy(
+    name: string,
+    args: aws.iam.PolicyArgs): aws.iam.Policy
+{
+    let policyArgs: aws.iam.PolicyArgs = args;
+    return new aws.iam.Policy(name, policyArgs);
+}
+
 // Add the specified policies to the existing IAM Principal
 export function addPoliciesToExistingRole(
     name: string,
@@ -42,14 +51,28 @@ export function addPoliciesToExistingRole(
     }
 }
 
-// Creates an IAM PolicyDocument to allow the ARN to assume
-export function assumeRolePolicy(user: aws.ARN): aws.iam.PolicyDocument {
+// Creates an IAM PolicyDocument to allow the User ARN to assume roles.
+export function assumeUserRolePolicy(user: aws.ARN): aws.iam.PolicyDocument {
     return {
         Version: "2012-10-17",
         Statement: [
             {
                 Effect: "Allow",
                 Principal: { AWS: [user] },
+                Action: "sts:AssumeRole",
+            },
+        ],
+    };
+}
+
+// Creates an IAM PolicyDocument to allow the Service ARN to assume roles.
+export function assumeServiceRolePolicy(service: aws.ARN): aws.iam.PolicyDocument {
+    return {
+        Version: "2012-10-17",
+        Statement: [
+            {
+                Effect: "Allow",
+                Principal: { Service: [service] },
                 Action: "sts:AssumeRole",
             },
         ],

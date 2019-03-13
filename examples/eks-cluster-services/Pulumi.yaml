@@ -1,0 +1,3 @@
+name: kx-eks-cluster-services
+runtime: nodejs
+description: Kubernetes Cluster Services - IAM (kube2iam, external-dns, fluentd-cloudwatch), kube2iam, and fluentd-cloudwatch.
