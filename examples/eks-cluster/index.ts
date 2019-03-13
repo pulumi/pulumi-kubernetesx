@@ -1,8 +1,8 @@
 import * as pulumi from "@pulumi/pulumi";
-import * as eks from "@pulumi/eks";
 import * as awsx from "@pulumi/awsx";
+import * as eks from "@pulumi/eks";
 
-const name = "nebula"
+const name = "kx-eks-cluster";
 
 // Retrieve an existing VPC.
 //
@@ -35,9 +35,10 @@ const vpc = awsx.Network.fromVpc(name,
 const cluster = new eks.Cluster(name, {
     vpcId: vpc.vpcId,
     subnetIds: vpc.subnetIds,
-    desiredCapacity: 2,
+    instanceType: "t3.xlarge",
+    desiredCapacity: 3,
     minSize: 1,
-    maxSize: 2,
+    maxSize: 3,
     storageClasses: "gp2",
     deployDashboard: false,
 });
@@ -45,9 +46,9 @@ const cluster = new eks.Cluster(name, {
 // Export the cluster name
 export const clusterName = cluster.core.cluster.name;
 
-// Export the cluster's Node / Worker instance IAM Role ARN
+// Export the cluster's Node / Worker IAM Role ARNs and prefix
 export const clusterRoleArn = cluster.core.cluster.roleArn;
-const arnPrefix: pulumi.Output<string> = clusterRoleArn.apply(s => s.split("/")).apply(s => s[0]);
+export const arnPrefix: pulumi.Output<string> = clusterRoleArn.apply(s => s.split("/")).apply(s => s[0]);
 export const instanceRoleArn = pulumi.concat(arnPrefix, "/", cluster.instanceRole)
 
 // Export the cluster kubeconfig.
