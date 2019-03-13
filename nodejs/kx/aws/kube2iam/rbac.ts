@@ -6,32 +6,36 @@ import { config } from "./config";
 export function makeKube2IamServiceAccount(
     provider: k8s.Provider,
     namespace: pulumi.Input<string>): k8s.core.v1.ServiceAccount {
-        return new k8s.core.v1.ServiceAccount(config.appName, {
+    return new k8s.core.v1.ServiceAccount(
+        config.appName,
+        {
             metadata: {
                 namespace: namespace,
             },
         },
-            {
-                provider: provider,
-            }
-        )
-    }
+        {
+            provider: provider,
+        },
+    );
+}
 
 // Create a ClusterRole
 export function makeKube2IamClusterRole(provider: k8s.Provider): k8s.rbac.v1.ClusterRole {
-    return new k8s.rbac.v1.ClusterRole(config.appName, {
-        rules: [
-            {
-                apiGroups:[""],
-                resources: ["namespaces", "pods"],
-                verbs: ["get", "list", "watch"],
-            },
-        ],
-    },
+    return new k8s.rbac.v1.ClusterRole(
+        config.appName,
+        {
+            rules: [
+                {
+                    apiGroups: [""],
+                    resources: ["namespaces", "pods"],
+                    verbs: ["get", "list", "watch"],
+                },
+            ],
+        },
         {
             provider: provider,
-        }
-    )
+        },
+    );
 }
 
 // Create a ClusterRoleBinding
@@ -40,7 +44,9 @@ export function makeKube2IamClusterRoleBinding(
     namespace: pulumi.Input<string>,
     serviceAccountName: pulumi.Input<string>,
     clusterRoleName: pulumi.Input<string>): k8s.rbac.v1.ClusterRoleBinding {
-        return new k8s.rbac.v1.ClusterRoleBinding(config.appName, {
+    return new k8s.rbac.v1.ClusterRoleBinding(
+        config.appName,
+        {
             subjects: [
                 {
                     kind: "ServiceAccount",
@@ -54,8 +60,8 @@ export function makeKube2IamClusterRoleBinding(
                 name: clusterRoleName,
             },
         },
-            {
-                provider: provider,
-            }
-        )
-    }
+        {
+            provider: provider,
+        },
+    );
+}
