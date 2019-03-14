@@ -1,17 +1,18 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as k8s from "@pulumi/kubernetes";
+import * as kx from "../../nodejs/kx";
 import { config } from "./config";
 
 // Create Kubernetes Pulumi provider
-const provider = new k8s.Provider("eks-k8s", {
+const provider = new k8s.Provider("kx-k8s-demo", {
     kubeconfig: config.kubeconfig.apply(JSON.stringify),
 });
 
 // Create app labels
-const appLabels = { app: config.name };
+const labels = { app: config.name };
 
 // Create a Namespace
-const appNamespace = new k8s.core.v1.Namespace(
+const namespace = new k8s.core.v1.Namespace(
     config.namespace,
     undefined,
     {
@@ -19,18 +20,18 @@ const appNamespace = new k8s.core.v1.Namespace(
     }
 );
 
-let appNamespaceName = appNamespace.metadata.apply(m => m.name);
+let namespaceName = namespace.metadata.apply(m => m.name);
 
 // Create a k8s-demo Service
 const svc = new k8s.core.v1.Service(config.name,
     {
         metadata: {
-            labels: appLabels,
-            namespace: appNamespaceName,
+            labels: labels,
+            namespace: namespaceName,
         },
         spec: {
             ports: [{ port: 80, targetPort: "http" }],
-            selector: appLabels,
+            selector: labels,
         },
     },
     {
@@ -39,49 +40,54 @@ const svc = new k8s.core.v1.Service(config.name,
 );
 
 // Export the Service name
-export let appServiceName = svc.metadata.apply(m => m.name);
+export let serviceName = svc.metadata.apply(m => m.name);
+
+
+// Assemble the Job resources.
+const resources = {
+    limits: {cpu: "256m", memory: "256Mi"},
+    requests: { cpu: "256m", memory: "256Mi"},
+};
 
 // Create a k8s-demo Deployment
-const deploy = new k8s.apps.v1.Deployment(config.name,
-    {
-        metadata: {
-            labels: appLabels,
-            namespace: appNamespaceName,
-        },
-        spec: {
-            replicas: 1,
-            selector: { matchLabels: appLabels },
-            template: {
-                metadata: {
-                    labels: appLabels,
-                },
-                spec: {
-                    containers: [
-                        {
-                            name: config.name,
-                            image: config.image,
-                            imagePullPolicy: "Always",
-                            ports: [{ name: "http", containerPort: 8080 }]
-                        }
-                    ],
-                }
-            }
-        }
+// Define the Pod args.
+const podBuilder = new kx.PodBuilder(config.name, provider, {
+    podSpec: {
+        containers: [{
+            name: config.name,
+            image: config.image,
+            ports: [{ name: "http", containerPort: 8080 }],
+            resources: resources,
+        }],
     },
-    {
-        provider: provider,
-    }
-);
+})
+    .withMetadata({
+        labels: labels,
+        namespace: namespaceName,
+    })
+    /*
+    .addEnvVarsFromConfigMap(configMapName)
+    .addImagePullSecrets(dockerConfigJson)
+    .mountVolume(
+        "/host/proc",
+        {
+            name: "proc",
+            hostPath: {path: "/proc"},
+        })
+    */
+
+// Create the Deployment.
+const deployment = podBuilder.createDeployment(config.name, { replicas: 1 });
 
 // Export the Deployment name
-export let appDeploymentName = deploy.metadata.apply(m => m.name);
+export let deploymentName = deployment.metadata.apply(m => m.name);
 
 // Create a k8s-demo Ingress
 const ing = new k8s.extensions.v1beta1.Ingress(config.name,
     {
         metadata: {
-            labels: appLabels,
-            namespace: appNamespaceName,
+            labels: labels,
+            namespace: namespaceName,
             annotations: {
                 "kubernetes.io/ingress.class": config.nginxIngressClass,
             },
@@ -95,7 +101,7 @@ const ing = new k8s.extensions.v1beta1.Ingress(config.name,
                             {
                                 path: "/foobar",
                                 backend: {
-                                    serviceName: appServiceName,
+                                    serviceName: serviceName,
                                     servicePort: "http",
                                 }
                             },
@@ -111,11 +117,11 @@ const ing = new k8s.extensions.v1beta1.Ingress(config.name,
 );
 
 // Export the Ingress Name and Address
-export let appIngressName = ing.metadata.apply(m => m.name)
-//export let appIngressHost = ing.spec.apply(s => s.rules[0]
-export let appIngressHostname = ing.status.apply(status => status.loadBalancer.ingress[0].hostname)
+export let ingressName = ing.metadata.apply(m => m.name)
+export let ingressHostname = ing.status.apply(status => status.loadBalancer.ingress[0].hostname)
 
 // curl Command
 // Export the curl command to hit the ingress endpoint for the k8s-demo
-export let appFullCurlCommand = pulumi.concat("curl -v -H 'Host: ", config.hostname, "' http://", appIngressHostname, "/foobar")
-export let appCurlCommand = pulumi.concat("curl -v ", config.hostname, "/foobar")
+export let fullCurlCommand = pulumi.concat("curl -v -H 'Host: ", config.hostname, "' http://", ingressHostname, "/foobar")
+export let curlCommand = pulumi.concat("curl -v ", config.hostname, "/foobar")
+export let url = pulumi.concat(config.hostname, "/foobar")
