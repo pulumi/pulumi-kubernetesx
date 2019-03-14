@@ -1,11 +1,13 @@
 import * as pulumi from "@pulumi/pulumi";
 
+const pulumiConfig = new pulumi.Config(pulumi.getProject());
+
 // Existing nebula EKS cluster Pulumi stack.
-const nebulaStack = new pulumi.StackReference(`metral/nebula/dev`)
+const eksClusterStack = new pulumi.StackReference(pulumiConfig.require("eksClusterStackRef"));
 
 export const config = {
     // Cluster details from nebula cluster output
-    kubeconfig: nebulaStack.getOutput("kubeconfig"),
+    kubeconfig: eksClusterStack.getOutput("kubeconfig"),
 
     // Demo details
     name: "k8s-demo",
