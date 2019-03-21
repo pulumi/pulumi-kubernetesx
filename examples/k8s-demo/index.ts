@@ -6,8 +6,7 @@ import { config } from "./config";
 // Create Kubernetes Pulumi provider
 const provider = new k8s.Provider("kx-k8s-demo", {
     kubeconfig: config.kubeconfig.apply(JSON.stringify),
-});
-
+}); 
 // Create app labels
 const labels = { app: config.name };
 
@@ -20,51 +19,62 @@ const namespace = new k8s.core.v1.Namespace(
     }
 );
 
-let namespaceName = namespace.metadata.apply(m => m.name);
+let nsName = namespace.metadata.apply(m => m.name);
 
 // Create a k8s-demo Service
 const svc = new k8s.core.v1.Service(config.name,
     {
-        metadata: {
-            labels: labels,
-            namespace: namespaceName,
-        },
+        metadata: {labels: labels, namespace: nsName},
         spec: {
-            ports: [{ port: 80, targetPort: "http" }],
             selector: labels,
+            ports: [{ port: 80, targetPort: "http" }],
         },
     },
-    {
-        provider: provider,
-    }
+    { provider: provider}
 );
 
 // Export the Service name
 export let serviceName = svc.metadata.apply(m => m.name);
 
-
 // Assemble the Job resources.
 const resources = {
     limits: {cpu: "256m", memory: "256Mi"},
-    requests: { cpu: "256m", memory: "256Mi"},
+    requests: {cpu: "256m", memory: "256Mi"},
 };
 
-// Create a k8s-demo Deployment
-// Define the Pod args.
-const podBuilder = new kx.PodBuilder(config.name, provider, {
-    podSpec: {
-        containers: [{
-            name: config.name,
-            image: config.image,
-            ports: [{ name: "http", containerPort: 8080 }],
-            resources: resources,
-        }],
+// Create a k8s-demo PartialPodSpec.
+const demo = new kx.PartialPodSpec(config.name, {
+    container: {
+        name: config.name,
+        image: config.image,
+        ports: [{name: "http", containerPort: 8080 }],
+        resources: resources,
+        securityContext: { privileged: true },
     },
+    hostNetwork: true,
 })
-    .withMetadata({
-        labels: labels,
-        namespace: namespaceName,
-    })
+    .addMount({hostPath: {path: "/proc"}}, {mountPath: "/host/proc" })
+
+// Create a ConfigMap to hold environment variables.
+const configMap = new kx.ConfigMap(config.name,
+    {
+        metadata: { labels: labels, namespace: nsName, },
+        data: { "fake-api-key.txt": "my-fake-api-key", },
+    },
+    {provider: provider},
+);
+
+// Mount the ConfigMap onto the k8s-demo PartialPodSpec.
+configMap.mount(demo, {[config.name]: "/etc/config"});
+
+// Create a k8s-demo Deployment.
+const demoDeployment = kx.Deployment.fromPartialPodSpecs(config.name,
+    {
+        metadata: {labels: labels, namespace: nsName},
+        spec: {replicas: 1, template: {spec: [demo] }},
+    },
+    {provider: provider}
+);
     /*
     .addEnvVarsFromConfigMap(configMapName)
     .addImagePullSecrets(dockerConfigJson)
@@ -77,6 +87,7 @@ const podBuilder = new kx.PodBuilder(config.name, provider, {
     */
 
 // Create the Deployment.
+/*
 const deployment = podBuilder.createDeployment(config.name, { replicas: 1 });
 
 // Export the Deployment name
@@ -87,7 +98,7 @@ const ing = new k8s.extensions.v1beta1.Ingress(config.name,
     {
         metadata: {
             labels: labels,
-            namespace: namespaceName,
+            namespace: nsName,
             annotations: {
                 "kubernetes.io/ingress.class": config.nginxIngressClass,
             },
@@ -125,3 +136,4 @@ export let ingressHostname = ing.status.apply(status => status.loadBalancer.ingr
 export let fullCurlCommand = pulumi.concat("curl -v -H 'Host: ", config.hostname, "' http://", ingressHostname, "/foobar")
 export let curlCommand = pulumi.concat("curl -v ", config.hostname, "/foobar")
 export let url = pulumi.concat(config.hostname, "/foobar")
+*/

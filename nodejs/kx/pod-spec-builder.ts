@@ -4,74 +4,351 @@ import * as input from "@pulumi/kubernetes/types/input";
 import * as vol from "./volume";
 import * as ds from "./docker-secret";
 import * as utils from "./utils";
+import * as crypto from "crypto";
 
-// Pulumi namespace for the new PodBuilder pulumi.ComponentResource
-const pulumiComponentNamespace: string = "pulumi:kx:PodBuilder";
+// Omit<Container, "name"> creates a new type with all of the fields in `Container`, except `name`.
+// e.g. Omit a prop all-together:
+//      Omit<input.core.v1.PodSpec, "containers">
+// or, replace a prop with a new one:
+//      Omit<input.core.v1.PodSpec, "containers"> & { container: input.core.v1.Container },
+type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
 
-// PodBuilderArgs implements the spec settings for a Kubernetes Pod.
-export type PodBuilderArgs = {
-    // The spec of the Pod.
-    podSpec: input.core.v1.PodSpec;
-};
+type Mounts = { [containerName: string]: string | Omit<input.core.v1.VolumeMount, "name"> };
 
-// JobBuilderArgs implements the spec settings for a Kubernetes Job.
-export type JobBuilderArgs = {
-    // The number of retries before marking the job as failed. Defaults to 6.
-    backoffLimit?: pulumi.Input<number>;
+// Allows users to re-name a key before it is placed into the `ConfigMap` by
+// providing a manual mapping can be supplied as a dictionary (e.g.,
+// { "renameMe": "toThis" }) or a function that provides a mapping (e.g.,
+// path => path === "renameMe": "toThis" : path).
+type KeyMap = { [key: string]: string } | ((key: string) => string);
 
-    // The max time the CronJob can run before being terminated. Defaults to 10
-    // minutes.
-    activeDeadlineSeconds?: pulumi.Input<number>;
-};
+interface Mountable {
+    mount(partialPodSpec: PartialPodSpec, mount: Mounts): PartialPodSpec;
+}
 
-// CronJobBuilderArgs implements the spec settings for a Kubernetes CronJob.
-export type CronJobBuilderArgs = {
-    // The Cron scheduling extended format. k8s uses the standard 5-field format.
-    schedule: string,
+function isMountable(arg: any): arg is Mountable {
+    return arg.mount !== undefined;
+}
 
-    // The number of successful finished jobs to retain. This is a pointer to
-    // distinguish between explicit zero and not specified. Defaults to 3.
-    successfulJobsHistoryLimit?: pulumi.Input<number>,
+export class ConfigMap extends k8s.core.v1.ConfigMap implements Mountable {
+    constructor(
+        name: string,
+        args: input.core.v1.ConfigMap,
+        opts?: pulumi.CustomResourceOptions,
+    ) {
+        super(name, args, opts);
+    }
 
-    // The number of failed finished jobs to retain. This is a pointer to
-    // distinguish between explicit zero and not specified. Defaults to 1.
-    failedJobsHistoryLimit?: pulumi.Input<number>,
+    // Mount the ConfigMap onto the mount provided of the PartialPodSpec.
+    public mount(partialPodSpec: PartialPodSpec, mount: Mounts): PartialPodSpec {
+        return partialPodSpec.addMount(this, mount);
+    }
 
-    // The JobBuilderArgs for the CronJob.
-    jobBuilderArgs: JobBuilderArgs,
-};
+    /*
+    // Create ConfigMap with a K/V pair for each file in the directory. `keyMapFunc` can optionally
+    // rename these keys.
+    static fromDirectory(
+        name: string,
+        path: string,
+        recursive?: boolean,
+        keyMap?: KeyMap,
+    ): ConfigMap {
+        throw Error();
+    }
+    */
 
-// DeploymentdBuilderArgs implements the spec settings for a Kubernetes
-// Deployment.
-export type DeploymentBuilderArgs = {
-    // The number of desired replicas of the Pods.
-    replicas?: pulumi.Input<number>;
-};
+    // Create ConfigMap containing a single file, `nginx.conf`. We map that
+    // filename to "nginx.conf" to "nginx".
+    //
+    // ConfigMap.fromFile("nginx.conf", { "nginx.conf": "nginx" })
+    static fromFiles(name: string, files: string | string[], keyMap?: KeyMap): ConfigMap {
+        throw Error();
+    }
 
-// ReplicaSetdBuilderArgs implements the spec settings for a Kubernetes
-// ReplicaSet.
-export type ReplicaSetBuilderArgs = {
-    // The number of desired replicas of the Pods.
-    replicas?: pulumi.Input<number>;
-};
+    /*
+    // Create ConfigMap whose data consists of the env file mapping:
+    //
+    // ConfigMap.fromEnvFile("my-env-file.txt")
+    static fromEnvFile(name: string, file: string, keyMap?: KeyMap): ConfigMap {
+        throw Error();
+    }
+    */
 
-// DaemonSetBuilderArgs implements the spec settings for a Kubernetes
-// DaemonSet.
-export type DaemonSetBuilderArgs = {
-    // An update strategy to replace existing DaemonSet pods with new pods.  // Defaults to "RollingUpdate".
-    updateStrategy?: pulumi.Input<string>;
+    /*
+    // Create ConfigMap whose data consists of the env file mapping:
+    //
+    // ConfigMap.fromUrls("gist.githubusercontent.com/hausdorff/deadbeef/mydata")
+    static fromUrls(name: string, url: string | string[], keyMap?: KeyMap): ConfigMap {
+        throw Error();
+    }
+    */
+}
 
-    // The minimum number of seconds for which a newly created DaemonSet pod
-    // should be ready without any of its container crashing, for it to be
-    // considered available. Defaults to 0 (pod will be considered available as
-    // soon as it is ready).
-    minReadySeconds?: pulumi.Input<number>;
+function isConfigMap(arg: any): arg is k8s.core.v1.ConfigMap {
+    return (<k8s.core.v1.ConfigMap>arg).kind !== undefined;
+}
 
-    // The number of old history to retain to allow rollback. This is a pointer to
-    // distinguish between explicit zero and not specified. Defaults to 10.
-    revisionHistoryLimit?: pulumi.Input<number>;
-};
+function isOmitVolumeMount(arg: any): arg is Omit<input.core.v1.VolumeMount, "name"> {
+    return (<Omit<input.core.v1.VolumeMount, "name">>arg).mountPath !== undefined;
+}
 
+// Implements a template for a partial PodSpec, that is intended to be merged into a 
+// single, overarching input.core.v1.PodSpec.
+//
+// The type can either be:
+// - A PodSpec where the prop:
+//   - spec.initContainers has been replaced with only 1 spec.initContainer,
+//   and 0 containers as its been removed.
+//  or
+// - A PodSpec where the prop:
+//   - spec.containers has been replaced with only 1 spec.container, 
+//   and 0 initContainers as its been removed.
+type PartialPodSpecTemplate =
+	| Omit<
+	Omit<input.core.v1.PodSpec, "containers"> & { container: input.core.v1.Container },
+	"initContainers"
+	>
+	| Omit<
+	Omit<input.core.v1.PodSpec, "initContainers"> & {
+		initContainer: input.core.v1.Container;
+	},
+	"containers"
+	>;
+
+// Pulumi namespace for the new PartialPodSpec pulumi.ComponentResource
+const partialPodSpecNamespace: string = "pulumi:kx:PartialPodSpec";
+
+export class PartialPodSpec extends pulumi.ComponentResource {
+    public readonly partialPodSpec: PartialPodSpecTemplate;
+
+    constructor(
+        name: string,
+        args: PartialPodSpecTemplate,
+        opts?: pulumi.ComponentResourceOptions,
+    ) {
+        super(partialPodSpecNamespace, name, args, opts);
+
+        if (args === undefined) {
+            return {} as PartialPodSpec;
+        }
+
+        this.partialPodSpec = args;
+        let pps = (<any>this.partialPodSpec);
+
+        // Init spec.volumes.
+        if (pps.volumes === undefined) {
+            pps.volumes = [];
+        }
+
+        // Add DownwardAPI environment variables to the initContainer.
+        if (pps.initContainer !== undefined) {
+            vol.addEnvVars(vol.downwardApiEnvVars, [pps.initContainer]);
+
+            // Mount the Downward API volume to the mount path.
+            this.addMount(vol.downwardApiVolume, {[pps.initContainer.name]: "/etc/podinfo"});
+        }
+
+        // Add DownwardAPI environment variables to the container.
+        if (pps.container !== undefined) {
+            vol.addEnvVars(vol.downwardApiEnvVars, [pps.container]);
+
+            // Mount the Downward API volume to the mount path.
+            this.addMount(vol.downwardApiVolume, {[pps.container.name]: "/etc/podinfo"});
+        }
+
+    }
+
+    public addMount(
+        mountable: Omit<input.core.v1.Volume, "name"> | Mountable,
+        mounts: Mounts,
+    ): PartialPodSpec {
+        let pps = (<any>this.partialPodSpec);
+        if (pps === undefined) {
+            return this;
+        }
+
+        let mountVolume = {} as Omit<input.core.v1.Volume, "name">;
+
+        // Mount the volume to the container's mount path.
+        switch (isMountable(mountable)){
+            case true: {
+                if (isConfigMap(mountable)){
+                    mountVolume = {
+                        configMap: {
+                            name: mountable.metadata.apply(m => m.name),
+                        }
+                    }
+                }
+                break;
+            }
+            case false: {
+                mountVolume = (<Omit<input.core.v1.Volume, "name">>mountable);
+                break;
+            }
+        };
+
+        for (let containerName of Object.keys(mounts)) {
+            let mount = mounts[containerName];
+            let mountPath: pulumi.Input<string>;
+
+            if (isOmitVolumeMount(mount)) {
+                mountPath = mount.mountPath;
+            } else {
+                mountPath = mount;
+            }
+
+            let mountName = utils.createDnsString(JSON.stringify(mountPath));
+
+            if ("initContainer" in pps && pps.initContainer.name === containerName) {
+                vol.addVolume(mountName, mountVolume, pps.volumes);
+                vol.addVolumeMount(mountName, mountPath, [pps.initContainer]);
+            } else if ("container" in pps && pps.container.name === containerName) {
+                vol.addVolume(mountName, mountVolume, pps.volumes);
+                vol.addVolumeMount(mountName, mountPath, [pps.container]);
+            }
+        }
+        return this;
+    }
+
+    /*
+    static fromContainer(container: input.core.v1.Container): PartialPodSpec {
+        throw Error();
+    }
+    */
+}
+
+// Pulumi namespace for the new PodSpecBuilder pulumi.ComponentResource
+const podSpecBuilderNamespace: string = "pulumi:kx:PodSpecBuilder";
+export class PodSpecBuilder extends pulumi.ComponentResource {
+    public readonly podSpecBuilder: input.core.v1.PodSpec;
+
+    constructor(
+        name: string,
+        args: PartialPodSpec[],
+        opts?: pulumi.ComponentResourceOptions,
+    ) {
+        super(podSpecBuilderNamespace, name, args, opts);
+
+        if (args === undefined) {
+            return {} as PodSpecBuilder;
+        }
+
+        this.podSpecBuilder = PodSpecBuilder.fromPartialPodSpecs(args);
+
+        /*
+        public configData: input.core.v1.ConfigMap;
+
+        constructor(public pod: input.core.v1.PodSpec) {}
+
+        public mountConfigMap(config: k8s.core.v1.ConfigMap, mounts: Mounts): PodSpecBuilder {
+            return this;
+        }
+
+        public mountVolume(volume: Omit<input.core.v1.Volume, "name">, mounts: Mounts): PodSpecBuilder {
+            return this;
+        }
+
+        public addMountsToContainer(mounts: any, containerName: string) {}
+         */
+    }
+
+    static fromPartialPodSpecs(partialPodSpecs: PartialPodSpec[]): input.core.v1.PodSpec {
+        let initContainers: any[] = [];
+        let containers: any[] = [];
+        let volumes: any[] = [];
+
+        if (partialPodSpecs === undefined ||
+            partialPodSpecs.length == 0){
+            return {} as input.core.v1.PodSpec;
+        }
+
+        // Form the base of the new, aggregate PodSpec, which will
+        // merge the PartialPodSpecs.
+        //
+        // Currently, we use a simple policy to determine which
+        // PartialPodSpec's props are set in the new, aggregate PodSpec.
+        //
+        // The policy is that the first PartialPodSpec in the array will
+        // dictate the aggregate PodSpec props set. All other PartialPodSpecs
+        // will only be used to extract and slot the container within (see below)
+        // appropriately in the aggregate PodSpec. Any other props will not
+        // be regarded. This inherently means, the user *must* use the first
+        // elem of the array to determine which PartialPodSpec props get used.
+        let podSpec: any = {...partialPodSpecs[0].partialPodSpec};
+        delete podSpec['initContainer'];
+        delete podSpec['container'];
+        delete podSpec['volumes'];
+
+        // Slot the container of each PartialPodSpec into their proper group
+        // in the aggregate PodSpec.
+        for (let pps of partialPodSpecs) {
+            if ('initContainer' in pps.partialPodSpec) {
+                initContainers.push(pps.partialPodSpec.initContainer);
+            }
+            if ('container' in pps.partialPodSpec) {
+                containers.push(pps.partialPodSpec.container);
+            }
+
+            // Merge the volumes of each PartialPodSpec into the aggregate PodSpec.
+            volumes = volumes.concat(pps.partialPodSpec.volumes);
+        }
+
+        podSpec.initContainers = initContainers;
+        podSpec.containers = containers;
+        podSpec.volumes = volumes;
+
+        return <input.core.v1.PodSpec>podSpec;
+    }
+}
+
+export type PartialDeploymentSpecTemplate = 
+    Omit<input.apps.v1.DeploymentSpec, "selector" | "template"> & 
+    {template: {spec: PartialPodSpec[]}};
+
+export type DeploymentSpecBuilder =
+    Omit<input.apps.v1.Deployment, "spec"> & {spec: PartialDeploymentSpecTemplate};
+
+export class Deployment extends k8s.apps.v1.Deployment {
+    static fromPartialPodSpecs(
+        name: string,
+        args: DeploymentSpecBuilder,
+        opts: pulumi.CustomResourceOptions,
+    ) {
+
+        if (args === undefined ||
+            opts === undefined) {
+            return {} as k8s.apps.v1.Deployment;
+        }
+
+        let deployArgs = (<any>args);
+
+        // Create PodSpecBuilder from PartialPodSpecs.
+        let podSpecBuilder: input.core.v1.PodSpec =
+            PodSpecBuilder.fromPartialPodSpecs(deployArgs.spec.template.spec);
+
+        // Form the DeploymentSpec from the args and PodSpecBuilder.
+        let deploySpec: any = {...deployArgs.spec};
+        deploySpec.selector = {matchLabels: deployArgs.metadata.labels},
+        deploySpec.template = {
+            metadata: deployArgs.metadata,
+            spec: podSpecBuilder,
+        }
+
+        // Form the Deployment from the args and DeploymentSpec.
+        let deploy: input.apps.v1.Deployment = {
+            metadata: deployArgs.metadata,
+            spec: deploySpec,
+        };
+
+        // Create a new Deployment.
+        return new k8s.apps.v1.Deployment(
+            name,
+            deploy,
+            {provider: opts.provider},
+        );
+    }
+}
+
+/*
 // PodBuilder implements a Kubernetes Pod, with the specified PodBuilderArgs.
 export class PodBuilder extends pulumi.ComponentResource {
     public readonly podBuilderName: string;
@@ -325,7 +602,6 @@ export class PodBuilder extends pulumi.ComponentResource {
         name: string,
         cronJobArgs?: CronJobBuilderArgs,
     ): k8s.batch.v1beta1.CronJob {
-
         const cronJobBuilder = makeCronJobBuilderBase(this.podBuilder, cronJobArgs);
         return new k8s.batch.v1beta1.CronJob(
             name,
@@ -339,7 +615,6 @@ export class PodBuilder extends pulumi.ComponentResource {
         name: string,
         deploymentArgs?: DeploymentBuilderArgs,
     ): k8s.apps.v1.Deployment {
-
         const deployBuilder = makeDeploymentBuilderBase(this.podBuilder, deploymentArgs);
         return new k8s.apps.v1.Deployment(
             name,
@@ -376,7 +651,10 @@ export class PodBuilder extends pulumi.ComponentResource {
         );
     };
 }
+*/
 
+
+/*
 // Create a base manifest for a Kubernetes Job.
 export function makeJobBuilderBase(
     podBuilder: input.core.v1.Pod,
@@ -455,10 +733,12 @@ export function makeCronJobBuilderBase(
         },
     };
 }
+*/
+/*
 
 // Create a base manifest for a Kubernetes Deployment.
 export function makeDeploymentBuilderBase(
-    podBuilder: input.core.v1.Pod,
+    podBuilder: PodBuilderSpec,
     deploymentArgs?: DeploymentBuilderArgs,
 ): input.apps.v1.Deployment {
     if (podBuilder === undefined) {
@@ -487,7 +767,9 @@ export function makeDeploymentBuilderBase(
         },
     };
 }
+*/
 
+/*
 // Create a base manifest for a Kubernetes ReplicaSet.
 export function makeReplicaSetBuilderBase(
     podBuilder: input.core.v1.Pod,
@@ -557,3 +839,4 @@ export function makeDaemonSetBuilderBase(
         },
     };
 }
+*/

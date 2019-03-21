@@ -2,17 +2,26 @@ import * as pulumi from "@pulumi/pulumi";
 import * as k8s from "@pulumi/kubernetes";
 import * as input from "@pulumi/kubernetes/types/input";
 
+// Omit<Container, "name"> creates a new type with all of the fields in `Container`, except `name`.
+type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
+
 // Attach a volume at the mountPath in the containers specified.
 export function addVolumeMount (
     name: pulumi.Input<string>,
     mountPath: pulumi.Input<string>,
     containers: pulumi.Input<any>,
 ) {
+
     if (containers !== undefined) {
         containers.map((c: any) => {
+            if (c === undefined) {
+                return;
+            }
+
             if (c.volumeMounts === undefined ) {
                 c.volumeMounts = [];
             }
+
             c.volumeMounts.push({
                 name: name,
                 mountPath: mountPath,
@@ -23,13 +32,21 @@ export function addVolumeMount (
 
 // Add a volume to the volumes.
 export function addVolume(
-    volume: input.core.v1.Volume,
+    name: pulumi.Input<string>,
+    volume: Omit<input.core.v1.Volume, "name">,
     volumes: pulumi.Input<any>,
 ) {
+    if (volume === undefined) {
+        return; 
+    }
+
     if (volumes === undefined ) {
         volumes = [];
     }
-    volumes.push(volume);
+
+    let vol: any = { ...volume };
+    vol.name = name;
+    volumes.push(vol);
 }
 
 // Adds environment variables from the ConfigMap into the containers.
@@ -168,7 +185,7 @@ export const downwardApiEnvVars: input.core.v1.EnvVar[] = [
 ];
 
 export const downwardApiVolume: input.core.v1.Volume = {
-    name: "podinfo",
+    name: "downwardAPI",
     downwardAPI: {
         items: [
             {
