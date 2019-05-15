@@ -1,13 +1,11 @@
 {
     "name": "kx-eks-app-services",
-    "dependencies": {
-        "@pulumi/pulumi": "^0.16.19",
-        "@pulumi/kubernetes": "^0.20.4"
-    },
     "devDependencies": {
-        "@types/node": "^10.0.0",
-        "tslint": "^5.11.0",
-        "typedoc": "^0.13.0",
+        "@types/node": "latest",
         "typescript": "^3.0.0"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "latest",
+        "@pulumi/kubernetes": "latest"
     }
 }
