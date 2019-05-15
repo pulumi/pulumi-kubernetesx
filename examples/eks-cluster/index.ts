@@ -48,8 +48,8 @@ export const clusterName = cluster.core.cluster.name;
 
 // Export the cluster's Node / Worker IAM Role ARNs and prefix
 export const clusterRoleArn = cluster.core.cluster.roleArn;
-export const arnPrefix: pulumi.Output<string> = clusterRoleArn.apply(s => s.split("/")).apply(s => s[0]);
-export const instanceRoleArn = pulumi.concat(arnPrefix, "/", cluster.instanceRole)
+export const roles = cluster.core.instanceRoles!;
+export const instanceRoleArn = roles.apply(r => r[0].arn);
 
 // Export the cluster kubeconfig.
 export const kubeconfig = cluster.kubeconfig
