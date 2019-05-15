@@ -254,13 +254,4 @@ const ing = new k8s.extensions.v1beta1.Ingress(config.name,
     },
     {provider: provider}
 );
-
-// Export the Ingress Name and Address
-export let ingressName = ing.metadata.apply(m => m.name)
-export let ingressHostname = ing.status.apply(status => status.loadBalancer.ingress[0].hostname)
-
-// curl Command
-// Export the curl command to hit the ingress endpoint for the k8s-demo
-export let fullCurlCommand = pulumi.concat("curl -v -H 'Host: ", config.hostname, "' http://", ingressHostname, "/foobar")
 export let curlCommand = pulumi.concat("curl -v ", config.hostname, "/foobar")
-export let url = pulumi.concat(config.hostname, "/foobar")
