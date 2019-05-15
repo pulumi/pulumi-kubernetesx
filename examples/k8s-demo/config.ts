@@ -13,6 +13,9 @@ export const config = {
     name: "k8s-demo",
     namespace: "k8s-demo",
     hostname: "meetup.apps.pulumi.tech",
-    image: "quay.io/metral/k8s-demo:0.0.1",
-    nginxIngressClass: "my-nginx-class"
+    image: "quay.io/metral/k8s-demo-private:0.0.1",
+    nginxIngressClass: "my-nginx-class",
+
+    // Docker registry creds in b64 encoding
+    dockerConfigJson: pulumiConfig.require("dockerConfigJson"),
 };
