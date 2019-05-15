@@ -33,8 +33,6 @@ const configMap = new k8s.core.v1.ConfigMap(
 const configMapName = configMap.metadata.apply(m => m.name);
 
 // Create a Secret to hold env variables.
-const dockerConfigJson = config.dockerConfigJson;
-console.log(dockerConfigJson);
 const imagePullSecret = new k8s.core.v1.Secret(
     config.name,
     {
@@ -44,7 +42,7 @@ const imagePullSecret = new k8s.core.v1.Secret(
             namespace: namespaceName,
         },
         data: {
-            ".dockerconfigjson": dockerConfigJson,
+            ".dockerconfigjson": config.dockerConfigJson,
         },
     },
     { provider: provider},
@@ -83,43 +81,45 @@ const deployment = new k8s.apps.v1.Deployment(config.name,
                 },
                 spec: {
                     imagePullSecrets: [{ name: imagePullSecretName}],
-                    volumes: [{
-                        name: "podinfo",
-                        downwardAPI: {
-                            items: [
-                                {
-                                    path: "metadata.name",
-                                    fieldRef: {
-                                        fieldPath: "metadata.name",
+                    volumes: [
+                        { name: "proc", hostPath: {path: "/proc"}},
+                        {
+                            name: "podinfo",
+                            downwardAPI: {
+                                items: [
+                                    {
+                                        path: "metadata.name",
+                                        fieldRef: {
+                                            fieldPath: "metadata.name",
+                                        },
                                     },
-                                },
-                                {
-                                    path: "metadata.namespace",
-                                    fieldRef: {
-                                        fieldPath: "metadata.namespace",
+                                    {
+                                        path: "metadata.namespace",
+                                        fieldRef: {
+                                            fieldPath: "metadata.namespace",
+                                        },
                                     },
-                                },
-                                {
-                                    path: "metadata.uid",
-                                    fieldRef: {
-                                        fieldPath: "metadata.uid",
+                                    {
+                                        path: "metadata.uid",
+                                        fieldRef: {
+                                            fieldPath: "metadata.uid",
+                                        },
                                     },
-                                },
-                                {
-                                    path: "metadata.labels",
-                                    fieldRef: {
-                                        fieldPath: "metadata.labels",
+                                    {
+                                        path: "metadata.labels",
+                                        fieldRef: {
+                                            fieldPath: "metadata.labels",
+                                        },
                                     },
-                                },
-                                {
-                                    path: "metadata.annotations",
-                                    fieldRef: {
-                                        fieldPath: "metadata.annotations",
+                                    {
+                                        path: "metadata.annotations",
+                                        fieldRef: {
+                                            fieldPath: "metadata.annotations",
+                                        },
                                     },
-                                },
-                            ],
-                        },
-                    }],
+                                ],
+                            },
+                        }],
                     containers: [
                         {
                             name: config.name,
@@ -209,7 +209,10 @@ const deployment = new k8s.apps.v1.Deployment(config.name,
                                     },
                                 },
                             ],
-                            volumeMounts: [{ name: "podinfo", mountPath: "/etc/podinfo"}],
+                            volumeMounts: [
+                                { name: "podinfo", mountPath: "/etc/podinfo"},
+                                { name: "proc", mountPath: "/host/proc"}
+                            ],
                         }
                     ]
                 }

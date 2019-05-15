@@ -32,23 +32,6 @@ const configMap = new k8s.core.v1.ConfigMap(
 );
 const configMapName = configMap.metadata.apply(m => m.name);
 
-// Create a ConfigMap to hold env variables.
-const dockerConfigJson = new pulumi.Config(pulumi.getProject()).get("dockerconfigjson");
-const imagePullSecret = new k8s.core.v1.Secret(
-    config.name,
-    {
-        type: "kubernetes.io/dockerconfigjson",
-        metadata: {
-            labels: { app: config.name },
-            namespace: namespaceName,
-        },
-        data: {
-            ".dockerconfigjson": dockerConfigJson,
-        },
-    },
-    { provider: provider},
-);
-
 // Create a k8s-demo Service
 const svc = new k8s.core.v1.Service(config.name, {
     metadata: {
@@ -86,7 +69,7 @@ const podBuilder = new kx.PodBuilder(config.name, provider, {
         namespace: namespaceName,
     })
     .addEnvVarsFromConfigMap(configMapName)
-    .addImagePullSecrets(dockerConfigJson)
+    .addImagePullSecrets(config.dockerConfigJson)
     .mountVolume(
         "/host/proc",
         {
