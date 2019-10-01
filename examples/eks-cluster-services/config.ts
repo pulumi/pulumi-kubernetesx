@@ -13,7 +13,7 @@ export const config = {
     kubeconfig: eksClusterStack.getOutput("kubeconfig"),
 
     // Datadog API key.
-    datadogApiKey: pulumiConfig.require("datadogApiKey"),
+    // datadogApiKey: pulumiConfig.require("datadogApiKey"),
 
     // Namespace to create and run in.
 	namespace: "cluster-services",

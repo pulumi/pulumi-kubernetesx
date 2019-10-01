@@ -208,6 +208,7 @@ if (Object.keys(fluentdCloudWatch).length == 0) {
     throw new Error("The fluentdCloudWatch object is empty and cannot be created. Check for missing parameters.")
 }
 
+/*
 // -- Deploy Datadog --
 
 // Create the Datadog k8s resource stack
@@ -223,3 +224,4 @@ if (Object.keys(datadog).length == 0) {
 
 // Export the name
 export let datadogName = datadog.daemonSetName;
+*/
