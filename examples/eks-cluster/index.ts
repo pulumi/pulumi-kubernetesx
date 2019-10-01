@@ -15,15 +15,9 @@ const name = "kx-eks-cluster";
 // usePrivateSubnets: true: run compute instances in private subnets | false: run instances in public subnets.
 // securityGroupIds: the security group IDs of the VPC.
 // publicSubnetIds: the public subnets of the VPC.
-const vpc = awsx.Network.fromVpc(name,
-    {
-        vpcId: "vpc-0e5d4bcb19c954896",
-        subnetIds: ["subnet-0feb18c742e1b09c5", "subnet-08523f1c5c680b685", "subnet-04f3ea79b70afdda5"],
-        usePrivateSubnets: true,
-        securityGroupIds: ["sg-0dbcb0c8327f6ccb6"],
-        publicSubnetIds: ["subnet-098bf3f676265f011", "subnet-044e7c88896a9dfdb", "subnet-0ea95149f2e4cb356"],
-    }
-);
+const vpc = new awsx.ec2.Vpc(name, {
+    tags: { "Name": `${name}` },
+});
 
 // Create a new EKS cluster.
 //
@@ -33,13 +27,8 @@ const vpc = awsx.Network.fromVpc(name,
 // Here we chose to deploy the EKS workers into the private subnets of our
 // existing VPC from above.
 const cluster = new eks.Cluster(name, {
-    vpcId: vpc.vpcId,
-    subnetIds: vpc.subnetIds,
-    instanceType: "t2.medium",
-    desiredCapacity: 2,
-    minSize: 1,
-    maxSize: 3,
-    storageClasses: "gp2",
+    vpcId: vpc.id,
+    publicSubnetIds: vpc.publicSubnetIds,
     deployDashboard: false,
 });
 
