@@ -204,4 +204,3 @@ export const downwardApiVolume: input.core.v1.Volume = {
         ],
     },
 };
-
