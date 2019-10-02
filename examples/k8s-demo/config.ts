@@ -12,7 +12,7 @@ export const config = {
     // Demo details
     name: "k8s-demo",
     namespace: "k8s-demo",
-    hostname: "meetup.apps.pulumi.tech",
+    hostname: "demo.myapps.pulumi.tech",
     image: "quay.io/metral/k8s-demo-private:0.0.1",
     nginxIngressClass: "my-nginx-class",
 
