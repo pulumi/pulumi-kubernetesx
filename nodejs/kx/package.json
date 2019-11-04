@@ -1,0 +1,20 @@
+{
+    "name": "@pulumi/kx",
+    "version": "0.1.0",
+    "description": "Kubernetes config for humans",
+    "license": "Apache-2.0",
+    "keywords": [
+        "pulumi",
+        "kubernetes"
+    ],
+    "homepage": "https://pulumi.com",
+    "repository": "https://github.com/pulumi/pulumi-kx",
+    "devDependencies": {
+        "typescript": "^3.0.0",
+        "@types/node": "latest"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "latest",
+        "@pulumi/kubernetes": "latest"
+    }
+}
