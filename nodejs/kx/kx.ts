@@ -44,7 +44,7 @@ export namespace types {
         containers: pulumi.Input<pulumi.Input<Container>[]>,
     };
     export type Pod = Omit<k8s.types.input.core.v1.Pod, "spec"> & {
-        spec: pulumi.Input<PodSpec>,
+        spec: pulumi.Input<PodSpec | PodBuilder>,
     };
     export type DeploymentSpec = Omit<k8s.types.input.apps.v1.DeploymentSpec, "template"> & {
         template: pulumi.Input<Pod>,
@@ -142,18 +142,28 @@ function buildPodSpec(args: pulumi.Input<types.PodSpec>): pulumi.Output<k8s.type
 }
 
 export class PodBuilder {
-    public pod: pulumi.Output<k8s.types.input.core.v1.PodSpec>;
+    public podSpec: pulumi.Output<k8s.types.input.core.v1.PodSpec>;
     constructor(args: types.PodSpec) {
-        this.pod = buildPodSpec(args)
+        this.podSpec = buildPodSpec(args)
     }
 }
 
 export class Pod extends k8s.core.v1.Pod {
     constructor(name: string, args: types.Pod, opts?: pulumi.CustomResourceOptions) {
+
+        const isPodBuilder = (object: any): object is pulumi.UnwrappedObject<PodBuilder> => object.hasOwnProperty("podSpec");
+
+        const spec: pulumi.Output<k8s.types.input.core.v1.PodSpec> = pulumi.output(args.spec).apply(specArg => {
+            if (isPodBuilder(specArg)) {
+                return pulumi.output(specArg.podSpec);
+            } else {
+                return buildPodSpec(specArg);
+            }
+        });
         super(name,
             {
                 ...args,
-                spec: buildPodSpec(args.spec),
+                spec: spec,
             },
             opts);
     }
