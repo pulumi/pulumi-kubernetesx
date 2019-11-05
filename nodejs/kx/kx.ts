@@ -64,7 +64,7 @@ function buildPodSpec(pod: types.Pod): pulumi.Output<k8s.types.input.core.v1.Pod
         let containers: k8s.types.input.core.v1.Container[] = [];
         const volumes: k8s.types.input.core.v1.Volume[] = [];
         const isEnvMap = (env: any): env is pulumi.UnwrappedObject<types.EnvMap> => env.length === undefined;
-        const isPortMap = (env: any): env is pulumi.UnwrappedObject<types.PortMap> => env.length === undefined;
+        const isPortMap = (ports: any): ports is pulumi.UnwrappedObject<types.PortMap> => ports.length === undefined;
         const isMountObject = (object: any): object is pulumi.UnwrappedObject<types.VolumeMount> => object.hasOwnProperty("volume");
         pod.spec.containers.forEach(container => {
             let c: pulumi.UnwrappedObject<k8s.types.input.core.v1.Container> = {
@@ -74,26 +74,30 @@ function buildPodSpec(pod: types.Pod): pulumi.Output<k8s.types.input.core.v1.Pod
                 volumeMounts: [],
             };
             const env = container.env;
-            if (isEnvMap(env)) {
-                Object.keys(env).forEach(key => {
-                    const value = env[key];
-                    if (typeof value === "string") {
-                        c.env!.push({name: key, value: value})
-                    } else {
-                        c.env!.push({name: key, ...value})
-                    }
-                });
-            } else {
-                c.env = env;
+            if (env) {
+                if (isEnvMap(env)) {
+                    Object.keys(env).forEach(key => {
+                        const value = env[key];
+                        if (typeof value === "string") {
+                            c.env!.push({name: key, value: value})
+                        } else {
+                            c.env!.push({name: key, ...value})
+                        }
+                    });
+                } else {
+                    c.env = env;
+                }
             }
             const ports = container.ports;
-            if (isPortMap(ports)) {
-                Object.keys(ports).forEach(key => {
-                    const value = ports[key];
-                    c.ports!.push({name: key, containerPort: value});
-                });
-            } else {
-                c.ports = ports;
+            if (ports) {
+                if (isPortMap(ports)) {
+                    Object.keys(ports).forEach(key => {
+                        const value = ports[key];
+                        c.ports!.push({name: key, containerPort: value});
+                    });
+                } else {
+                    c.ports = ports;
+                }
             }
             const volumeMounts = container.volumeMounts;
             if (volumeMounts) {
