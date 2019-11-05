@@ -1,5 +1,5 @@
 PROJECT_NAME := Pulumi Kubernetes Extensions
-NODE_MODULE_NAME := @pulumi/kx
+NODE_MODULE_NAME := @pulumi/kubernetesx
 include ../../build/common.mk
 
 VERSION := $(shell ../../scripts/get-version)
