@@ -195,7 +195,8 @@ export class Pod extends k8s.core.v1.Pod {
 }
 
 export class Deployment extends k8s.apps.v1.Deployment {
-    private opts?: pulumi.CustomResourceOptions;
+    private readonly name: string;
+    private readonly opts?: pulumi.CustomResourceOptions;
     constructor(name: string, args: types.Deployment, opts?: pulumi.CustomResourceOptions) {
         const spec: pulumi.Output<k8s.types.input.apps.v1.DeploymentSpec> = pulumi.output<types.Deployment>(args)
             .apply(args => {
@@ -216,24 +217,20 @@ export class Deployment extends k8s.apps.v1.Deployment {
             },
             opts);
 
+        this.name = name;
         this.opts = opts;
     }
 
-    // fixme: this doesn't show up in preview and the name includes the autoname suffix
     public createService() {
         const serviceSpec = pulumi.output({
             ports: {http: 80}, // TODO: parse ports from PodSpec
             selector: this.spec.selector.matchLabels,
             type: types.ServiceType.LoadBalancer
         });
-        return this.metadata.name.apply(name => {
-            new Service(name, {
-                spec: serviceSpec,
-            }, {
-                ...this.opts,
-                parent: this
-            })
-        });
+
+        return new Service(this.name, {
+            spec: serviceSpec,
+        }, {...this.opts, parent: this});
     }
 }
 
