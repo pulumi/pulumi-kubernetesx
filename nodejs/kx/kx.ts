@@ -34,45 +34,58 @@ export namespace types {
         destPath: pulumi.Input<string>,
         srcPath?: pulumi.Input<string>,
     }
-    export type Container = Omit<k8s.types.input.core.v1.Container, "env"|"ports"|"volumeMounts"> & {
-        env?: pulumi.Input<pulumi.Input<k8s.types.input.core.v1.EnvVar>[] | EnvMap>
-        ports?: pulumi.Input<pulumi.Input<k8s.types.input.core.v1.ContainerPort>[] | PortMap>
-        volumeMounts?: pulumi.Input<pulumi.Input<k8s.types.input.core.v1.VolumeMount | VolumeMount>[]>
+    export type Container = Omit<k8s.types.input.core.v1.Container, "env"|"name"|"ports"|"volumeMounts"> & {
+        env?: pulumi.Input<pulumi.Input<k8s.types.input.core.v1.EnvVar>[] | EnvMap>,
+        name?: pulumi.Input<string>,
+        ports?: pulumi.Input<pulumi.Input<k8s.types.input.core.v1.ContainerPort>[] | PortMap>,
+        volumeMounts?: pulumi.Input<pulumi.Input<k8s.types.input.core.v1.VolumeMount | VolumeMount>[]>,
     };
     export type PodSpec = Omit<k8s.types.input.core.v1.PodSpec, "containers"> & {
-        containers: pulumi.Input<pulumi.Input<Container>[]>;
+        containers: pulumi.Input<pulumi.Input<Container>[]>,
     };
     export type Pod = Omit<k8s.types.input.core.v1.Pod, "spec"> & {
-        spec: pulumi.Input<PodSpec>;
+        spec: pulumi.Input<PodSpec>,
     };
     export type DeploymentSpec = Omit<k8s.types.input.apps.v1.DeploymentSpec, "template"> & {
-        template: pulumi.Input<Pod>
+        template: pulumi.Input<Pod>,
     };
     export type Deployment = Omit<k8s.types.input.apps.v1.Deployment, "spec"> & {
-        spec: pulumi.Input<DeploymentSpec>
+        spec: pulumi.Input<DeploymentSpec>,
     };
     export type StatefulSetSpec = Omit<k8s.types.input.apps.v1.StatefulSetSpec, "template"> & {
-        template: pulumi.Input<Pod>
+        template: pulumi.Input<Pod>,
     };
     export type StatefulSet = Omit<k8s.types.input.apps.v1.StatefulSet, "spec"> & {
-        spec: pulumi.Input<StatefulSetSpec>
+        spec: pulumi.Input<StatefulSetSpec>,
     };
 }
 
-function buildPodSpec(pod: types.Pod): pulumi.Output<k8s.types.input.core.v1.PodSpec> {
-    return pulumi.output<types.Pod>(pod).apply(pod => {
+function buildPodSpec(args: pulumi.Input<types.PodSpec>): pulumi.Output<k8s.types.input.core.v1.PodSpec> {
+    return pulumi.output<types.PodSpec>(args).apply(podSpec => {
         let containers: k8s.types.input.core.v1.Container[] = [];
         const volumes: k8s.types.input.core.v1.Volume[] = [];
         const isEnvMap = (env: any): env is pulumi.UnwrappedObject<types.EnvMap> => env.length === undefined;
         const isPortMap = (ports: any): ports is pulumi.UnwrappedObject<types.PortMap> => ports.length === undefined;
         const isMountObject = (object: any): object is pulumi.UnwrappedObject<types.VolumeMount> => object.hasOwnProperty("volume");
-        pod.spec.containers.forEach(container => {
+        podSpec.containers.forEach(container => {
             let c: pulumi.UnwrappedObject<k8s.types.input.core.v1.Container> = {
                 ...container,
                 env: [],
+                name: "",
                 ports: [],
                 volumeMounts: [],
             };
+            if (container.name) {
+                c.name = container.name;
+            } else {
+                const re = /(.*\/|^)(?<image>\w+)(:(?<tag>.*))?/;
+                const imageArg = container.image || "";
+                let result = re.exec(imageArg);
+                if (!result) {
+                    throw new Error('Failed to parse image name from ' + imageArg)
+                }
+                c.name = result[2];
+            }
             const env = container.env;
             if (env) {
                 if (isEnvMap(env)) {
@@ -119,120 +132,124 @@ function buildPodSpec(pod: types.Pod): pulumi.Output<k8s.types.input.core.v1.Pod
             containers.push(c)
         });
         return pulumi.output({
-            ...pod.spec,
             containers: containers,
             volumes: [
-                ...pod.spec.volumes || [],
+                ...podSpec.volumes || [],
                 ...volumes,
             ],
         });
     });
 }
 
+export class PodBuilder {
+    public pod: pulumi.Output<k8s.types.input.core.v1.PodSpec>;
+    constructor(args: types.PodSpec) {
+        this.pod = buildPodSpec(args)
+    }
+}
+
 export class Pod extends k8s.core.v1.Pod {
     constructor(name: string, args: types.Pod, opts?: pulumi.CustomResourceOptions) {
-        const spec = buildPodSpec(args);
-
         super(name,
             {
                 ...args,
-                spec: spec,
+                spec: buildPodSpec(args.spec),
             },
             opts);
     }
 }
 
-export class Deployment extends k8s.apps.v1.Deployment {
-    constructor(name: string, args: types.Deployment, opts?: pulumi.CustomResourceOptions) {
-        const spec: pulumi.Output<k8s.types.input.apps.v1.DeploymentSpec> = pulumi.output<types.Deployment>(args)
-            .apply(args => {
-                const podSpec = buildPodSpec(args.spec.template);
-                return pulumi.output({
-                    ...args.spec,
-                    template: {
-                        ...args.spec.template,
-                        spec: podSpec
-                    }
-                })
-            });
-
-        super(name,
-            {
-                ...args,
-                spec: spec,
-            },
-            opts);
-    }
-}
-
-export class StatefulSet extends k8s.apps.v1.StatefulSet {
-    constructor(name: string, args: types.StatefulSet, opts?: pulumi.CustomResourceOptions) {
-        const spec: pulumi.Output<k8s.types.input.apps.v1.StatefulSetSpec> = pulumi.output<types.StatefulSet>(args)
-            .apply(args => {
-                const podSpec = buildPodSpec(args.spec.template);
-                return pulumi.output({
-                    ...args.spec,
-                    template: {
-                        ...args.spec.template,
-                        spec: podSpec
-                    }
-                })
-            });
-
-        super(name,
-            {
-                ...args,
-                spec: spec,
-            },
-            opts);
-    }
-
-    public createService(name: string, args?: types.ServiceArgs): k8s.core.v1.Service {
-
-        // TODO: pull this into a function if possible
-        const spec: pulumi.Output<k8s.types.input.core.v1.ServiceSpec> = pulumi.output<types.ServiceArgs>(args)
-            .apply(args => {
-                let type: string = types.ServiceType.ClusterIP;
-                let ports: k8s.types.input.core.v1.ServicePort[] = [];
-                if (args) {
-                    if (args.type) {
-                        type = args.type;
-                    }
-                    if (args.ports) {
-                        const portArgs = args.ports;
-                        Object.keys(portArgs).forEach(name => {
-                            const port = portArgs[name];
-                            ports.push({
-                                name: name,
-                                port: port,
-                                targetPort: name,
-                            });
-                        });
-                    }
-                }
-                return pulumi.output({
-                    type: type,
-                    ports: ports,
-                    selector: this.spec.template.metadata.labels,
-                });
-            });
-
-        // TODO: create service automatically for STS
-        // StatefulSet should probably be a ComponentResource that includes a headless Service
-        return new k8s.core.v1.Service(name, {
-            metadata: this.metadata.apply(m => {
-                delete m.annotations['pulumi.com/autonamed'];
-                delete m.annotations['kubectl.kubernetes.io/last-applied-configuration'];
-                return {
-                    annotations: m.annotations,
-                    labels: m.labels,
-                    name: this.spec.serviceName,
-                }
-            }),
-            spec: spec,
-        })
-    }
-}
+// export class Deployment extends k8s.apps.v1.Deployment {
+//     constructor(name: string, args: types.Deployment, opts?: pulumi.CustomResourceOptions) {
+//         const spec: pulumi.Output<k8s.types.input.apps.v1.DeploymentSpec> = pulumi.output<types.Deployment>(args)
+//             .apply(args => {
+//                 const podSpec = buildPodSpec(args.spec.template);
+//                 return pulumi.output({
+//                     ...args.spec,
+//                     template: {
+//                         ...args.spec.template,
+//                         spec: podSpec
+//                     }
+//                 })
+//             });
+//
+//         super(name,
+//             {
+//                 ...args,
+//                 spec: spec,
+//             },
+//             opts);
+//     }
+// }
+//
+// export class StatefulSet extends k8s.apps.v1.StatefulSet {
+//     constructor(name: string, args: types.StatefulSet, opts?: pulumi.CustomResourceOptions) {
+//         const spec: pulumi.Output<k8s.types.input.apps.v1.StatefulSetSpec> = pulumi.output<types.StatefulSet>(args)
+//             .apply(args => {
+//                 const podSpec = buildPodSpec(args.spec.template);
+//                 return pulumi.output({
+//                     ...args.spec,
+//                     template: {
+//                         ...args.spec.template,
+//                         spec: podSpec
+//                     }
+//                 })
+//             });
+//
+//         super(name,
+//             {
+//                 ...args,
+//                 spec: spec,
+//             },
+//             opts);
+//     }
+//
+//     public createService(name: string, args?: types.ServiceArgs): k8s.core.v1.Service {
+//
+//         // TODO: pull this into a function if possible
+//         const spec: pulumi.Output<k8s.types.input.core.v1.ServiceSpec> = pulumi.output<types.ServiceArgs>(args)
+//             .apply(args => {
+//                 let type: string = types.ServiceType.ClusterIP;
+//                 let ports: k8s.types.input.core.v1.ServicePort[] = [];
+//                 if (args) {
+//                     if (args.type) {
+//                         type = args.type;
+//                     }
+//                     if (args.ports) {
+//                         const portArgs = args.ports;
+//                         Object.keys(portArgs).forEach(name => {
+//                             const port = portArgs[name];
+//                             ports.push({
+//                                 name: name,
+//                                 port: port,
+//                                 targetPort: name,
+//                             });
+//                         });
+//                     }
+//                 }
+//                 return pulumi.output({
+//                     type: type,
+//                     ports: ports,
+//                     selector: this.spec.template.metadata.labels,
+//                 });
+//             });
+//
+//         // TODO: create service automatically for STS
+//         // StatefulSet should probably be a ComponentResource that includes a headless Service
+//         return new k8s.core.v1.Service(name, {
+//             metadata: this.metadata.apply(m => {
+//                 delete m.annotations['pulumi.com/autonamed'];
+//                 delete m.annotations['kubectl.kubernetes.io/last-applied-configuration'];
+//                 return {
+//                     annotations: m.annotations,
+//                     labels: m.labels,
+//                     name: this.spec.serviceName,
+//                 }
+//             }),
+//             spec: spec,
+//         })
+//     }
+// }
 
 export class PersistentVolumeClaim extends k8s.core.v1.PersistentVolumeClaim {
     constructor(name: string, args: k8s.types.input.core.v1.PersistentVolumeClaim, opts?: pulumi.CustomResourceOptions) {
