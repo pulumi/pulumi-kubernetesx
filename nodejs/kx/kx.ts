@@ -50,7 +50,7 @@ export namespace types {
         template: pulumi.Input<Pod>,
     };
     export type Deployment = Omit<k8s.types.input.apps.v1.Deployment, "spec"> & {
-        spec: pulumi.Input<DeploymentSpec>,
+        spec: pulumi.Input<DeploymentSpec | k8s.types.input.apps.v1.DeploymentSpec>,
     };
     export type StatefulSetSpec = Omit<k8s.types.input.apps.v1.StatefulSetSpec, "template"> & {
         template: pulumi.Input<Pod>,
@@ -142,9 +142,27 @@ function buildPodSpec(args: pulumi.Input<types.PodSpec>): pulumi.Output<k8s.type
 }
 
 export class PodBuilder {
-    public podSpec: pulumi.Output<k8s.types.input.core.v1.PodSpec>;
+    public readonly podSpec: pulumi.Output<k8s.types.input.core.v1.PodSpec>;
+    private readonly podName: pulumi.Output<string>;
+
     constructor(args: types.PodSpec) {
-        this.podSpec = buildPodSpec(args)
+        this.podSpec = buildPodSpec(args);
+        this.podName = this.podSpec.containers.apply((containers: k8s.types.input.core.v1.Container[]) => {
+            return pulumi.output(containers[0].name);
+        });
+    }
+
+    public asDeploymentSpec(args?: {replicas?: number}): pulumi.Output<k8s.types.input.apps.v1.DeploymentSpec> {
+        const appLabels = { app: this.podName };
+        const deploymentSpec: k8s.types.input.apps.v1.DeploymentSpec = {
+            selector: { matchLabels: appLabels },
+            replicas: args && args.replicas || 1,
+            template: {
+                metadata: { labels: appLabels },
+                spec: this.podSpec,
+            }
+        };
+        return pulumi.output(deploymentSpec);
     }
 }
 
@@ -169,29 +187,29 @@ export class Pod extends k8s.core.v1.Pod {
     }
 }
 
-// export class Deployment extends k8s.apps.v1.Deployment {
-//     constructor(name: string, args: types.Deployment, opts?: pulumi.CustomResourceOptions) {
-//         const spec: pulumi.Output<k8s.types.input.apps.v1.DeploymentSpec> = pulumi.output<types.Deployment>(args)
-//             .apply(args => {
-//                 const podSpec = buildPodSpec(args.spec.template);
-//                 return pulumi.output({
-//                     ...args.spec,
-//                     template: {
-//                         ...args.spec.template,
-//                         spec: podSpec
-//                     }
-//                 })
-//             });
-//
-//         super(name,
-//             {
-//                 ...args,
-//                 spec: spec,
-//             },
-//             opts);
-//     }
-// }
-//
+export class Deployment extends k8s.apps.v1.Deployment {
+    constructor(name: string, args: types.Deployment, opts?: pulumi.CustomResourceOptions) {
+        const spec: pulumi.Output<k8s.types.input.apps.v1.DeploymentSpec> = pulumi.output<types.Deployment>(args)
+            .apply(args => {
+                const podSpec = buildPodSpec(args.spec.template.spec as types.PodSpec);
+                return pulumi.output({
+                    ...args.spec,
+                    template: {
+                        ...args.spec.template,
+                        spec: podSpec
+                    }
+                })
+            });
+
+        super(name,
+            {
+                ...args,
+                spec: spec,
+            },
+            opts);
+    }
+}
+
 // export class StatefulSet extends k8s.apps.v1.StatefulSet {
 //     constructor(name: string, args: types.StatefulSet, opts?: pulumi.CustomResourceOptions) {
 //         const spec: pulumi.Output<k8s.types.input.apps.v1.StatefulSetSpec> = pulumi.output<types.StatefulSet>(args)
