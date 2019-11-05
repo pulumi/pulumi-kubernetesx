@@ -52,6 +52,13 @@ export namespace types {
     export type Deployment = Omit<k8s.types.input.apps.v1.Deployment, "spec"> & {
         spec: pulumi.Input<DeploymentSpec | k8s.types.input.apps.v1.DeploymentSpec>,
     };
+    export type ServiceSpec = Omit<k8s.types.input.core.v1.ServiceSpec, "ports"|"type"> & {
+        ports?: pulumi.Input<pulumi.Input<k8s.types.input.core.v1.ServicePort>[] | PortMap>,
+        type?: pulumi.Input<ServiceType | string>,
+    }
+    export type Service = Omit<k8s.types.input.core.v1.Service, "spec"> & {
+        spec: pulumi.Input<ServiceSpec>,
+    };
     export type StatefulSetSpec = Omit<k8s.types.input.apps.v1.StatefulSetSpec, "template"> & {
         template: pulumi.Input<Pod>,
     };
@@ -199,6 +206,41 @@ export class Deployment extends k8s.apps.v1.Deployment {
                         spec: podSpec
                     }
                 })
+            });
+
+        super(name,
+            {
+                ...args,
+                spec: spec,
+            },
+            opts);
+    }
+}
+
+export class Service extends k8s.core.v1.Service {
+    constructor(name: string, args: types.Service, opts?: pulumi.CustomResourceOptions) {
+
+        const spec: pulumi.Output<k8s.types.input.core.v1.Service> = pulumi.output<types.Service>(args)
+            .apply((args: pulumi.UnwrappedObject<types.Service>) => {
+                const isPortMap = (ports: any): ports is types.PortMap => ports.length === undefined;
+
+                const ports: k8s.types.input.core.v1.ServicePort[] = [];
+                const portsArg = args.spec.ports;
+                if (portsArg) {
+                    if (isPortMap(portsArg)) {
+                        Object.keys(portsArg).forEach(key => {
+                            const value = portsArg[key];
+                            ports.push({name: key, port: value});
+                        });
+                    } else {
+                        ports.concat(...portsArg)
+                    }
+                }
+                return {
+                    ...args.spec,
+                    ports: ports,
+                    type: args.spec.type as string
+                }
             });
 
         super(name,
