@@ -279,6 +279,7 @@ export class Service extends k8s.core.v1.Service {
     }
 }
 
+// TODO: finish this out. will probably want to automatically create a matching Service
 // export class StatefulSet extends k8s.apps.v1.StatefulSet {
 //     constructor(name: string, args: types.StatefulSet, opts?: pulumi.CustomResourceOptions) {
 //         const spec: pulumi.Output<k8s.types.input.apps.v1.StatefulSetSpec> = pulumi.output<types.StatefulSet>(args)
@@ -386,6 +387,8 @@ export class ConfigMap extends k8s.core.v1.ConfigMap {
             srcPath: srcPath,
         })
     }
+
+    // TODO: add asEnvValue
 }
 
 export class Secret extends k8s.core.v1.Secret {
