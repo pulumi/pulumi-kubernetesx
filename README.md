@@ -1,5 +1,23 @@
 # Pulumi Kubernetes Extensions
 
+"Kubernetes Configuration for Humans"
+
+The Kubernetes API includes many required fields that aren't interesting to the
+humans using the API. While these fields are necessary for Kubernetes, the machine,
+they are a distraction for users.
+
+The Kubernetes Extensions (kx) library is designed to simplify the declaration
+of Kubernetes resources, and make the API easier for humans to use. This is
+accomplished in the following ways:
+
+1. Better syntax - wherever possible, we simplify the resource syntax. The kx
+   library maintains full compatibility with the raw k8s declarations, so it
+   is possible to mix and match with resources defined with `pulumi-kubernetes`.
+1. Easily compose resources - Kubernetes apps usually comprise several resources
+   that reference each other (Deployment, ConfigMap, Secret, etc.). kx makes it
+   easy to inject these references without having to worry about managing
+   labels/selectors or resource names.
+
 ## Installation
 
 1. Run `make` to build the package.
