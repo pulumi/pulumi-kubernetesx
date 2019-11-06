@@ -221,11 +221,21 @@ export class Deployment extends k8s.apps.v1.Deployment {
         this.opts = opts;
     }
 
-    public createService() {
-        const serviceSpec = pulumi.output({
-            ports: {http: 80}, // TODO: parse ports from PodSpec
-            selector: this.spec.selector.matchLabels,
-            type: types.ServiceType.LoadBalancer
+    // TODO: will want to create input type based on ServiceSpec
+    public createService(args?: {type?: pulumi.Input<types.ServiceType | string>}) {
+        const serviceSpec = this.spec.template.spec.containers.apply(containers => {
+            const ports: Record<string, number> = {};
+            containers.forEach(container => {
+                container.ports.forEach(port => {
+                    ports[port.name] = port.containerPort;
+                });
+            });
+            return {
+                ports: ports,
+                selector: this.spec.selector.matchLabels,
+                // TODO: probably need to unwrap args.type in case it's a computed value
+                type: args && args.type as string,
+            }
         });
 
         return new Service(this.name, {
