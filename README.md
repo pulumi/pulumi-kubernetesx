@@ -22,6 +22,20 @@ const pb = new kx.PodBuilder({
 });
 ```
 
+Note that a `PodBuilder` does not create a k8s resource; it is a convenience class
+for defining a PodSpec that can be easily composed with other kx resources.
+
+```typescript
+// Define the PodSpec.
+const pb = new kx.PodBuilder({
+    containers: [{image: "nginx"}]
+});
+// Create a Pod resource using the PodBuilder.
+new kx.Pod("nginx", {
+    spec: pb
+});
+```
+
 ### Create a Deployment
 
 Using a `PodBuilder` class to define the workload Pod, create a Deployment
@@ -30,7 +44,40 @@ resource.
 ```typescript
 const pb = new kx.PodBuilder(...);
 const deployment = new kx.Deployment("app", {
-    spec: pb.asDeploymentSpec()
+    // asDeploymentSpec() takes parameters corresponding 
+    // to a DeploymentSpec (e.g., replicas).
+    spec: pb.asDeploymentSpec({ replicas: 3 }) 
+});
+```
+
+Note that you can still define the DeploymentSpec explicitly, but would be
+responsible for defining required fields (labels/selectors, etc.) as usual.
+This still benefits from the enhanced kx syntax for `env`, `ports`, 
+`volumeMounts`, and resource composability.
+
+```typescript
+const deployment = new kx.Deployment("app", {
+    spec: {
+        selector: {
+            matchLabels: {
+                app: "my-app",
+            }
+        },
+        replicas: 3,
+        template: {
+            metadata: {
+                labels: {
+                    app: "my-app",
+                }
+            },
+            spec: {
+                containers: [{
+                    image: "nginx",
+                    ports: {http: 80},
+                }]
+            }
+        }
+    }
 });
 ```
 
@@ -76,7 +123,7 @@ const cm = new kx.ConfigMap("cm", {
     data: { "config": "very important data" }
 });
 const secret = new kx.Secret("secret", {
-    stringData: { "password": new random.RandomPassword("mariadb-root-pw", { length: 12 }).result }
+    stringData: { "password": new random.RandomPassword("password", { length: 12 }).result }
 });
 const pb = new kx.PodBuilder({
     containers: [{
