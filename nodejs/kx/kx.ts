@@ -388,7 +388,16 @@ export class ConfigMap extends k8s.core.v1.ConfigMap {
         })
     }
 
-    // TODO: add asEnvValue
+    public asEnvValue(key: pulumi.Input<string>): pulumi.Output<k8s.types.input.core.v1.EnvVarSource> {
+        return pulumi.output({
+            valueFrom: {
+                configMapKeyRef: {
+                    name: this.metadata.name,
+                    key: key
+                }
+            }
+        })
+    }
 }
 
 export class Secret extends k8s.core.v1.Secret {

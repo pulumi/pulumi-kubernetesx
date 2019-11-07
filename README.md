@@ -136,7 +136,7 @@ const pb = new kx.PodBuilder({
 
 ### Create Environment Variables from a ConfigMap and Secret
 
-Use the `asEnvVar` verb on ConfigMap and Secret resources to add them to the Pod
+Use the `asEnvValue` verb on ConfigMap and Secret resources to add them to the Pod
 under the `env` field. The `PodBuilder` automatically creates the relevant boilerplate
 depending on the resource type.
 
