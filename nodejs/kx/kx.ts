@@ -16,8 +16,8 @@ import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 
 export namespace types {
-    export type EnvMap = Record<string, pulumi.Input<string | k8s.types.input.core.v1.EnvVarSource>>
-    export type PortMap = Record<string, pulumi.Input<number>>
+    export type EnvMap = Record<string, pulumi.Input<string | k8s.types.input.core.v1.EnvVarSource>>;
+    export type PortMap = Record<string, pulumi.Input<number>>;
 
     export enum ServiceType {
         ClusterIP = "ClusterIP",
@@ -27,13 +27,13 @@ export namespace types {
         type?: pulumi.Input<types.ServiceType>,
         ports?: pulumi.Input<types.PortMap>,
         selector?: pulumi.Input<{[key: string]: pulumi.Input<string>}>,
-    }
+    };
 
     export type VolumeMount = {
         volume: pulumi.Input<k8s.types.input.core.v1.Volume>,
         destPath: pulumi.Input<string>,
         srcPath?: pulumi.Input<string>,
-    }
+    };
     export type Container = Omit<k8s.types.input.core.v1.Container, "env"|"name"|"ports"|"volumeMounts"> & {
         env?: pulumi.Input<pulumi.Input<k8s.types.input.core.v1.EnvVar>[] | EnvMap>,
         name?: pulumi.Input<string>,
@@ -55,7 +55,7 @@ export namespace types {
     export type ServiceSpec = Omit<k8s.types.input.core.v1.ServiceSpec, "ports"|"type"> & {
         ports?: pulumi.Input<pulumi.Input<k8s.types.input.core.v1.ServicePort>[] | PortMap>,
         type?: pulumi.Input<ServiceType | string>,
-    }
+    };
     export type Service = Omit<k8s.types.input.core.v1.Service, "spec"> & {
         spec: pulumi.Input<ServiceSpec>,
     };
@@ -69,13 +69,13 @@ export namespace types {
 
 function buildPodSpec(args: pulumi.Input<types.PodSpec>): pulumi.Output<k8s.types.input.core.v1.PodSpec> {
     return pulumi.output<types.PodSpec>(args).apply(podSpec => {
-        let containers: k8s.types.input.core.v1.Container[] = [];
+        const containers: k8s.types.input.core.v1.Container[] = [];
         const volumes: k8s.types.input.core.v1.Volume[] = [];
         const isEnvMap = (env: any): env is pulumi.UnwrappedObject<types.EnvMap> => env.length === undefined;
         const isPortMap = (ports: any): ports is pulumi.UnwrappedObject<types.PortMap> => ports.length === undefined;
         const isMountObject = (object: any): object is pulumi.UnwrappedObject<types.VolumeMount> => object.hasOwnProperty("volume");
         podSpec.containers.forEach(container => {
-            let c: pulumi.UnwrappedObject<k8s.types.input.core.v1.Container> = {
+            const c: pulumi.UnwrappedObject<k8s.types.input.core.v1.Container> = {
                 ...container,
                 env: [],
                 name: "",
@@ -87,9 +87,9 @@ function buildPodSpec(args: pulumi.Input<types.PodSpec>): pulumi.Output<k8s.type
             } else {
                 const re = /(.*\/|^)(?<image>\w+)(:(?<tag>.*))?/;
                 const imageArg = container.image || "";
-                let result = re.exec(imageArg);
+                const result = re.exec(imageArg);
                 if (!result) {
-                    throw new Error('Failed to parse image name from ' + imageArg)
+                    throw new Error("Failed to parse image name from " + imageArg);
                 }
                 c.name = result[2];
             }
@@ -99,9 +99,9 @@ function buildPodSpec(args: pulumi.Input<types.PodSpec>): pulumi.Output<k8s.type
                     Object.keys(env).forEach(key => {
                         const value = env[key];
                         if (typeof value === "string") {
-                            c.env!.push({name: key, value: value})
+                            c.env!.push({name: key, value: value});
                         } else {
-                            c.env!.push({name: key, ...value})
+                            c.env!.push({name: key, ...value});
                         }
                     });
                 } else {
@@ -136,7 +136,7 @@ function buildPodSpec(args: pulumi.Input<types.PodSpec>): pulumi.Output<k8s.type
                     }
                 });
             }
-            containers.push(c)
+            containers.push(c);
         });
         return pulumi.output({
             containers: containers,
@@ -167,7 +167,7 @@ export class PodBuilder {
             template: {
                 metadata: { labels: appLabels },
                 spec: this.podSpec,
-            }
+            },
         };
         return pulumi.output(deploymentSpec);
     }
@@ -205,9 +205,9 @@ export class Deployment extends k8s.apps.v1.Deployment {
                     ...args.spec,
                     template: {
                         ...args.spec.template,
-                        spec: podSpec
-                    }
-                })
+                        spec: podSpec,
+                    },
+                });
             });
 
         super(name,
@@ -235,7 +235,7 @@ export class Deployment extends k8s.apps.v1.Deployment {
                 selector: this.spec.selector.matchLabels,
                 // TODO: probably need to unwrap args.type in case it's a computed value
                 type: args && args.type as string,
-            }
+            };
         });
 
         return new Service(this.name, {
@@ -260,14 +260,14 @@ export class Service extends k8s.core.v1.Service {
                             ports.push({name: key, port: value});
                         });
                     } else {
-                        ports.concat(...portsArg)
+                        ports.concat(...portsArg);
                     }
                 }
                 return {
                     ...args.spec,
                     ports: ports,
-                    type: args.spec.type as string
-                }
+                    type: args.spec.type as string,
+                };
             });
 
         super(name,
@@ -351,7 +351,7 @@ export class Service extends k8s.core.v1.Service {
 
 export class PersistentVolumeClaim extends k8s.core.v1.PersistentVolumeClaim {
     constructor(name: string, args: k8s.types.input.core.v1.PersistentVolumeClaim, opts?: pulumi.CustomResourceOptions) {
-        super(name, args, opts)
+        super(name, args, opts);
     }
 
     // TODO: define input type?
@@ -361,11 +361,11 @@ export class PersistentVolumeClaim extends k8s.core.v1.PersistentVolumeClaim {
                 name: this.metadata.name,
                 persistentVolumeClaim: {
                     claimName: this.metadata.name,
-                }
+                },
             },
             destPath: destPath,
             srcPath: srcPath,
-        })
+        });
     }
 }
 
@@ -385,7 +385,7 @@ export class ConfigMap extends k8s.core.v1.ConfigMap {
             },
             destPath: destPath,
             srcPath: srcPath,
-        })
+        });
     }
 
     public asEnvValue(key: pulumi.Input<string>) {
@@ -393,10 +393,10 @@ export class ConfigMap extends k8s.core.v1.ConfigMap {
             valueFrom: {
                 configMapKeyRef: {
                     name: this.metadata.name,
-                    key: key
-                }
-            }
-        })
+                    key: key,
+                },
+            },
+        });
     }
 }
 
@@ -412,11 +412,11 @@ export class Secret extends k8s.core.v1.Secret {
                 secret: {
                     secretName: this.metadata.name,
                     // TODO: items
-                }
+                },
             },
             destPath: destPath,
             srcPath: srcPath,
-        })
+        });
     }
 
     public asEnvValue(key: pulumi.Input<string>) {
@@ -424,9 +424,9 @@ export class Secret extends k8s.core.v1.Secret {
             valueFrom: {
                 secretKeyRef: {
                     name: this.metadata.name,
-                    key: key
-                }
-            }
-        })
+                    key: key,
+                },
+            },
+        });
     }
 }
