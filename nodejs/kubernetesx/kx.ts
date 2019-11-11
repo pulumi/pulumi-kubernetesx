@@ -65,6 +65,12 @@ export namespace types {
     export type StatefulSet = Omit<k8s.types.input.apps.v1.StatefulSet, "spec"> & {
         spec: pulumi.Input<StatefulSetSpec | k8s.types.input.apps.v1.StatefulSetSpec>,
     };
+    export type JobSpec = Omit<k8s.types.input.batch.v1.JobSpec, "template"> & {
+        template: pulumi.Input<Pod>,
+    };
+    export type Job = Omit<k8s.types.input.batch.v1.Job, "spec"> & {
+        spec: pulumi.Input<JobSpec | k8s.types.input.batch.v1.JobSpec>,
+    };
 }
 
 function buildPodSpec(args: pulumi.Input<types.PodSpec>): pulumi.Output<k8s.types.input.core.v1.PodSpec> {
@@ -139,6 +145,7 @@ function buildPodSpec(args: pulumi.Input<types.PodSpec>): pulumi.Output<k8s.type
             containers.push(c);
         });
         return pulumi.output({
+            ...podSpec,
             containers: containers,
             volumes: [
                 ...podSpec.volumes || [],
@@ -184,6 +191,18 @@ export class PodBuilder {
             },
         };
         return pulumi.output(statefulSetSpec);
+    }
+
+    public asJobSpec(args?: types.JobSpec): pulumi.Output<k8s.types.input.batch.v1.JobSpec> {
+        const appLabels = { app: this.podName };
+        const jobSpec: k8s.types.input.batch.v1.JobSpec = {
+            ...args,
+            template: {
+                metadata: { labels: appLabels },
+                spec: this.podSpec,
+            },
+        };
+        return pulumi.output(jobSpec);
     }
 }
 
@@ -344,6 +363,35 @@ export class StatefulSet extends pulumi.ComponentResource {
                 spec: serviceSpec,
             }, {...opts, parent: this});
 
+    }
+}
+
+export class Job extends k8s.batch.v1.Job {
+    private readonly name: string;
+    private readonly opts?: pulumi.CustomResourceOptions;
+
+    constructor(name: string, args: types.Job, opts?: pulumi.CustomResourceOptions) {
+        const spec: pulumi.Output<k8s.types.input.batch.v1.JobSpec> = pulumi.output<types.Job>(args)
+            .apply(args => {
+                const podSpec = buildPodSpec(args.spec.template.spec as types.PodSpec);
+                return pulumi.output({
+                    ...args.spec,
+                    template: {
+                        ...args.spec.template,
+                        spec: podSpec,
+                    },
+                });
+            });
+
+        super(name,
+            {
+                ...args,
+                spec: spec,
+            },
+            opts);
+
+        this.name = name;
+        this.opts = opts;
     }
 }
 
