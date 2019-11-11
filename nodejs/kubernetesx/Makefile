@@ -13,3 +13,6 @@ build::
 	tsc
 	sed -e 's/\$${VERSION}/$(VERSION)/g' < package.json > bin/package.json
 	cp ../../README.md ../../LICENSE bin/
+
+lint::
+	tslint -c ../tslint.json -p tsconfig.json

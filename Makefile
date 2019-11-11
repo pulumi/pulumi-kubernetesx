@@ -1,5 +1,5 @@
 PROJECT_NAME := Pulumi Kubernetes Extensions
-SUB_PROJECTS := nodejs/kx
+SUB_PROJECTS := nodejs/kubernetesx
 include build/common.mk
 
 .PHONY: publish_packages
