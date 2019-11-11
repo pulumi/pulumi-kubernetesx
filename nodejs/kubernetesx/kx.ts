@@ -101,7 +101,7 @@ function buildPodSpec(args: pulumi.Input<types.PodSpec>): pulumi.Output<k8s.type
                         if (typeof value === "string") {
                             c.env!.push({name: key, value: value});
                         } else {
-                            c.env!.push({name: key, ...value});
+                            c.env!.push({name: key, valueFrom: value});
                         }
                     });
                 } else {
@@ -388,13 +388,11 @@ export class ConfigMap extends k8s.core.v1.ConfigMap {
         });
     }
 
-    public asEnvValue(key: pulumi.Input<string>) {
+    public asEnvValue(key: pulumi.Input<string>): pulumi.Output<k8s.types.input.core.v1.EnvVarSource> {
         return pulumi.output({
-            valueFrom: {
-                configMapKeyRef: {
-                    name: this.metadata.name,
-                    key: key,
-                },
+            configMapKeyRef: {
+                name: this.metadata.name,
+                key: key,
             },
         });
     }
@@ -419,13 +417,11 @@ export class Secret extends k8s.core.v1.Secret {
         });
     }
 
-    public asEnvValue(key: pulumi.Input<string>) {
+    public asEnvValue(key: pulumi.Input<string>): pulumi.Output<k8s.types.input.core.v1.EnvVarSource>  {
         return pulumi.output({
-            valueFrom: {
-                secretKeyRef: {
-                    name: this.metadata.name,
-                    key: key,
-                },
+            secretKeyRef: {
+                name: this.metadata.name,
+                key: key,
             },
         });
     }
