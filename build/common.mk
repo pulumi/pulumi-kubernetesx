@@ -106,9 +106,11 @@ PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
 
 GO_TEST_FAST = go test -short -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM}
 GO_TEST = go test -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM}
-GOPROXY = 'https://proxy.golang.org'
 
-.PHONY: default all ensure only_build only_test build lint install test_all core
+.PHONY: default all ensure only_build only_test only_test_fast build lint install test_all core
+
+# ensure that `default` is the target that is run when no arguments are passed to make
+default::
 
 # If there are sub projects, our default, all, and ensure targets will
 # recurse into them.
@@ -142,13 +144,8 @@ all:: build install lint test_all
 
 ensure::
 	$(call STEP_MESSAGE)
-ifeq ($(NOPROXY), true)
-	@echo "GO111MODULE=on go mod tidy"; GO111MODULE=on go mod tidy
-	@echo "GO111MODULE=on go mod vendor"; GO111MODULE=on go mod vendor
-else
-	@echo "GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
-	@echo "GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor"; GO111MODULE=on GOPROXY=$(GOPROXY) go mod vendor
-endif
+	@if [ -e 'Gopkg.toml' ]; then echo "dep ensure -v"; dep ensure -v; \
+		elif [ -e 'go.mod' ]; then echo "GO111MODULE=on go mod vendor"; GO111MODULE=on go mod vendor; fi
 	@if [ -e 'package.json' ]; then echo "yarn install"; yarn install; fi
 
 build::
@@ -173,13 +170,12 @@ install::
 	[ ! -e "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)" ] || rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
 	mkdir -p "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
 	cp -r bin/. "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
-	cp package.json "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
 	cp yarn.lock "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
 	rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)/node_modules"
 	cd "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)" && \
-	yarn install --offline --production && \
-	(yarn unlink > /dev/null 2>&1 || true) && \
-	yarn link
+		yarn install --offline --production && \
+		(yarn unlink > /dev/null 2>&1 || true) && \
+		yarn link
 endif
 
 only_build:: build install
