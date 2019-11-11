@@ -42,4 +42,4 @@ publish() {
     popd
 }
 
-publish awsx
+publish kubernetesx
