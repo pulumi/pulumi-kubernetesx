@@ -247,7 +247,7 @@ export class Deployment extends k8s.apps.v1.Deployment {
 export class Service extends k8s.core.v1.Service {
     constructor(name: string, args: types.Service, opts?: pulumi.CustomResourceOptions) {
 
-        const spec: pulumi.Output<k8s.types.input.core.v1.Service> = pulumi.output<types.Service>(args)
+        const spec = pulumi.output(args)
             .apply((args: pulumi.UnwrappedObject<types.Service>) => {
                 const isPortMap = (ports: any): ports is types.PortMap => ports.length === undefined;
 
@@ -388,7 +388,7 @@ export class ConfigMap extends k8s.core.v1.ConfigMap {
         })
     }
 
-    public asEnvValue(key: pulumi.Input<string>): pulumi.Output<k8s.types.input.core.v1.EnvVarSource> {
+    public asEnvValue(key: pulumi.Input<string>) {
         return pulumi.output({
             valueFrom: {
                 configMapKeyRef: {
@@ -419,7 +419,7 @@ export class Secret extends k8s.core.v1.Secret {
         })
     }
 
-    public asEnvValue(key: pulumi.Input<string>): pulumi.Output<k8s.types.input.core.v1.EnvVarSource> {
+    public asEnvValue(key: pulumi.Input<string>) {
         return pulumi.output({
             valueFrom: {
                 secretKeyRef: {
