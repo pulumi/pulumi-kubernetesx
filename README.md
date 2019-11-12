@@ -26,6 +26,11 @@ If you are just getting started with Pulumi and Kubernetes, the
 [Pulumi Kubernetes](https://www.pulumi.com/docs/intro/cloud-providers/kubernetes/)
 introduction is a good place to start.
 
+| kx                           | raw provider                  |
+| :--------------------------: | :---------------------------: |
+| ![](./images/kx-example.png) | ![](./images/raw-example.png) |
+
+
 ## Installation
 
 1. Run `make` to build the package.
@@ -67,104 +72,6 @@ new kx.Pod("nginx", {
 Using a `PodBuilder` class to define the workload Pod, create a Deployment
 resource. Instantiating the `kx.Deployment` class will cause Pulumi to create
 a matching `Deployment` resource in your Kubernetes cluster on the next `pulumi up`.
-
-| kx                                             | raw provider                                                      |
-| -----------------------------------------------|-------------------------------------------------------------------|
-|```typescript                                   | ```typescript                                                     |
-|const pb = new kx.PodBuilder({                  |const deployment = new k8s.apps.v1.Deployment("app", {             |
-|    metadata: {                                 |    spec: {                                                        |
-|        labels: {                               |        selector: {                                                |
-|            app: "my-app",                      |            matchLabels: {                                         |
-|        },                                      |                app: "my-app",                                     |
-|    },                                          |            }                                                      |
-|    spec: {                                     |        },                                                         |
-|        containers: [{                          |        replicas: 3,                                               | 
-|            image: "nginx",                     |        template: {                                                |
-|            ports: { http: 80 },                |            metadata: {                                            |
-|        }]                                      |                labels: {                                          |
-|    }                                           |                    app: "my-app",                                 |
-|});                                             |                }                                                  |
-| const deployment = new kx.Deployment("app", {  |            },                                                     |
-|    spec: pb.asDeploymentSpec({ replicas: 3 }), |            spec: {                                                |
-|});                                             |                containers: [{                                     |
-|```                                             |                    image: "nginx",                                |
-|                                                |                    ports: [{ name: "http", containerPort: 80 }],  |
-|                                                |                }]                                                 |
-|                                                |            }                                                      |
-|                                                |        }                                                          |
-|                                                |    }                                                              |
-|                                                |});                                                                |
-|                                                |```                                                                |
-
-
-
-
-
-<table>
-<tr>
-<th>
-kx
-</th>
-<th>
-raw provider
-</th>
-</tr>
-
-<tr>
-
-<td>
-<pre>
-typescript
-const pb = new kx.PodBuilder({
-    metadata: {
-        labels: {
-            app: "my-app",
-        }
-    },
-    spec: {
-        containers: [{
-            image: "nginx",
-            ports: { http: 80 },
-        }]
-    }
-});
-const deployment = new kx.Deployment("app", {
-    spec: pb.asDeploymentSpec({ replicas: 3 }),
-});
-</pre>
-</td>
-
-<td>
-<pre>
-typescript
-const deployment = new k8s.apps.v1.Deployment("app", {
-    spec: {
-        selector: {
-            matchLabels: {
-                app: "my-app",
-            }
-        },
-        replicas: 3,
-        template: {
-            metadata: {
-                labels: {
-                    app: "my-app",
-                }
-            },
-            spec: {
-                containers: [{
-                    image: "nginx",
-                    ports: [{ name: "http", containerPort: 80 }],
-                }]
-            }
-        }
-    }
-});
-</pre>
-</td>
-
-</tr>
-</table>
 
 ```typescript
 const pb = new kx.PodBuilder(...);
