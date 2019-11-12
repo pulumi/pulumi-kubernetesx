@@ -68,6 +68,38 @@ Using a `PodBuilder` class to define the workload Pod, create a Deployment
 resource. Instantiating the `kx.Deployment` class will cause Pulumi to create
 a matching `Deployment` resource in your Kubernetes cluster on the next `pulumi up`.
 
+| kx                                             | raw provider                                                      |
+| -----------------------------------------------|-------------------------------------------------------------------|
+|```typescript                                   | ```typescript                                                     |
+|const pb = new kx.PodBuilder({                  |const deployment = new k8s.apps.v1.Deployment("app", {             |
+|    metadata: {                                 |    spec: {                                                        |
+|        labels: {                               |        selector: {                                                |
+|            app: "my-app",                      |            matchLabels: {                                         |
+|        },                                      |                app: "my-app",                                     |
+|    },                                          |            }                                                      |
+|    spec: {                                     |        },                                                         |
+|        containers: [{                          |        replicas: 3,                                               | 
+|            image: "nginx",                     |        template: {                                                |
+|            ports: { http: 80 },                |            metadata: {                                            |
+|        }]                                      |                labels: {                                          |
+|    }                                           |                    app: "my-app",                                 |
+|});                                             |                }                                                  |
+| const deployment = new kx.Deployment("app", {  |            },                                                     |
+|    spec: pb.asDeploymentSpec({ replicas: 3 }), |            spec: {                                                |
+|});                                             |                containers: [{                                     |
+|```                                             |                    image: "nginx",                                |
+|                                                |                    ports: [{ name: "http", containerPort: 80 }],  |
+|                                                |                }]                                                 |
+|                                                |            }                                                      |
+|                                                |        }                                                          |
+|                                                |    }                                                              |
+|                                                |});                                                                |
+|                                                |```                                                                |
+
+
+
+
+
 <table>
 <tr>
 <th>
