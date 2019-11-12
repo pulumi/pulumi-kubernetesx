@@ -22,9 +22,7 @@ The `kx` library takes full advantage of being defined in TypeScript, not in YAM
 This enables the use of functions, overloading, type-checking, and many other 
 richer API design tools than are available in the raw Kubernetes API.
 
-If you are just getting started with Pulumi and Kubernetes, the [Pulumi Kubernetes][pulumi-k8s] introduction is a better place to start.
-
-[pulumi-k8s]: {{< relref "/docs/intro/cloud-providers/kubernetes" >}}
+If you are just getting started with Pulumi and Kubernetes, the [Pulumi Kubernetes][https://www.pulumi.com/docs/intro/cloud-providers/kubernetes/] introduction is a better place to start.
 
 ## Installation
 
