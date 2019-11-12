@@ -68,6 +68,72 @@ Using a `PodBuilder` class to define the workload Pod, create a Deployment
 resource. Instantiating the `kx.Deployment` class will cause Pulumi to create
 a matching `Deployment` resource in your Kubernetes cluster on the next `pulumi up`.
 
+<table>
+<tr>
+<th>
+kx
+</th>
+<th>
+raw provider
+</th>
+</tr>
+
+<tr>
+
+<td>
+<pre>
+typescript
+const pb = new kx.PodBuilder({
+    metadata: {
+        labels: {
+            app: "my-app",
+        }
+    },
+    spec: {
+        containers: [{
+            image: "nginx",
+            ports: { http: 80 },
+        }]
+    }
+});
+const deployment = new kx.Deployment("app", {
+    spec: pb.asDeploymentSpec({ replicas: 3 }),
+});
+</pre>
+</td>
+
+<td>
+<pre>
+typescript
+const deployment = new k8s.apps.v1.Deployment("app", {
+    spec: {
+        selector: {
+            matchLabels: {
+                app: "my-app",
+            }
+        },
+        replicas: 3,
+        template: {
+            metadata: {
+                labels: {
+                    app: "my-app",
+                }
+            },
+            spec: {
+                containers: [{
+                    image: "nginx",
+                    ports: [{ name: "http", containerPort: 80 }],
+                }]
+            }
+        }
+    }
+});
+</pre>
+</td>
+
+</tr>
+</table>
+
 ```typescript
 const pb = new kx.PodBuilder(...);
 const deployment = new kx.Deployment("app", {
