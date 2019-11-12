@@ -3,13 +3,13 @@
 _Kubernetes for Humans_
 
 The Kubernetes API includes many required fields that aren't interesting to the
-humans using the API. While these fields are necessary for Kubernetes, the machine,
-they are a distraction for users.
+humans using the API. While these fields are necessary for Kubernetes, they are
+a distraction for users.
 
 The Kubernetes Extensions (`kx`) library for Pulumi is designed to simplify the 
 declaration of Kubernetes resources, and make the API easier for humans to use. 
 
-1. **Sane Defaults** - Less boilerplate; easier to use. Common configurations
+1. **Sane Defaults** - Less boilerplate and easier to use. Common configurations
    require minimal code.
 1. **Improved Authorship Experience** - Simplified syntax for declaring and
    composing Kubernetes resources. Reference objects rather than juggling string
