@@ -1,6 +1,6 @@
 # Pulumi Kubernetes Extensions
 
-_Kubernetes Configuration for Humans_
+_Kubernetes for Humans_
 
 The Kubernetes API includes many required fields that aren't interesting to the
 humans using the API. While these fields are necessary for Kubernetes, the machine,
