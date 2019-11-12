@@ -68,6 +68,7 @@ export namespace types {
     export type JobSpec = Omit<k8s.types.input.batch.v1.JobSpec, "template"> & {
         template: pulumi.Input<Pod>,
     };
+    export type PodBuilderJobSpec = Omit<k8s.types.input.batch.v1.JobSpec, "template">;
     export type Job = Omit<k8s.types.input.batch.v1.Job, "spec"> & {
         spec: pulumi.Input<JobSpec | k8s.types.input.batch.v1.JobSpec>,
     };
@@ -193,7 +194,7 @@ export class PodBuilder {
         return pulumi.output(statefulSetSpec);
     }
 
-    public asJobSpec(args?: types.JobSpec): pulumi.Output<k8s.types.input.batch.v1.JobSpec> {
+    public asJobSpec(args?: types.PodBuilderJobSpec): pulumi.Output<k8s.types.input.batch.v1.JobSpec> {
         const appLabels = { app: this.podName };
         const jobSpec: k8s.types.input.batch.v1.JobSpec = {
             ...args,
