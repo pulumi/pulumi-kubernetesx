@@ -17,6 +17,10 @@ This is accomplished in the following ways:
    that reference each other (Deployment, ConfigMap, Secret, etc.). `kx` makes it
    easy to inject these references without having to worry about managing
    labels/selectors or resource names.
+1. **Idiomatic Kubernetes** - We don't reinvent the wheel; the syntax is a
+   streamlined version of the same Kubernetes API you are used to. These extensions
+   are designed to accomodate production use cases, and provide access the full API
+   surface.
    
 The `kx` library takes full advantage of being defined in TypeScript, not in YAML.
 This enables the use of functions, overloading, type-checking, and many other 
