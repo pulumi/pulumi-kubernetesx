@@ -20,9 +20,11 @@ This is accomplished in the following ways:
    
 The `kx` library takes full advantage of being defined in TypeScript, not in YAML.
 This enables the use of functions, overloading, type-checking, and many other 
-richer API design tools than are available in the raw Kubernetes API.
+richer API design tools than are available using YAML or Helm.
 
-If you are just getting started with Pulumi and Kubernetes, the [Pulumi Kubernetes](https://www.pulumi.com/docs/intro/cloud-providers/kubernetes/) introduction is a better place to start.
+If you are just getting started with Pulumi and Kubernetes, the 
+[Pulumi Kubernetes](https://www.pulumi.com/docs/intro/cloud-providers/kubernetes/)
+introduction is a good place to start.
 
 ## Installation
 
@@ -63,7 +65,8 @@ new kx.Pod("nginx", {
 ### Create a Deployment
 
 Using a `PodBuilder` class to define the workload Pod, create a Deployment
-resource.
+resource. Instantiating the `kx.Deployment` class will cause Pulumi to create
+a matching `Deployment` resource in your Kubernetes cluster on the next `pulumi up`.
 
 ```typescript
 const pb = new kx.PodBuilder(...);
@@ -160,3 +163,11 @@ const pb = new kx.PodBuilder({
     }]
 });
 ```
+
+## Learn more about Pulumi
+
+[Intro to Pulumi](https://www.pulumi.com/docs/intro/)
+[Get Started with Kubernetes](https://www.pulumi.com/docs/get-started/kubernetes/)
+[Kubernetes Tutorials](https://www.pulumi.com/docs/tutorials/kubernetes/)
+[Pulumi: A Better Way to Kubernetes](https://www.pulumi.com/blog/pulumi-a-better-way-to-kubernetes/)
+[Pulumi's YouTube Channel](https://www.youtube.com/channel/UC2Dhyn4Ev52YSbcpfnfP0Mw)
