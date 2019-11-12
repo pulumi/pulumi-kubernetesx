@@ -3,20 +3,20 @@
 _Kubernetes for Humans_
 
 The Kubernetes API includes many required fields that aren't interesting to the
-humans using the API. While these fields are necessary for Kubernetes, the machine,
-they are a distraction for users.
+humans using the API. While these fields are necessary for Kubernetes, they are
+a distraction for users.
 
 The Kubernetes Extensions (`kx`) library for Pulumi is designed to simplify the 
 declaration of Kubernetes resources, and make the API easier for humans to use. 
-This is accomplished in the following ways:
 
-1. **Better Syntax** - Where possible, we simplify the resource syntax. The kx
-   library maintains full compatibility with the raw k8s declarations, so it
-   is possible to mix and match with resources defined with `pulumi-kubernetes`.
-1. **Easily compose resources** - Kubernetes apps usually comprise several resources
-   that reference each other (Deployment, ConfigMap, Secret, etc.). `kx` makes it
-   easy to inject these references without having to worry about managing
-   labels/selectors or resource names.
+1. **Sane Defaults** - Less boilerplate and easier to use. Common configurations
+   require minimal code.
+1. **Improved Authorship Experience** - Simplified syntax for declaring and
+   composing Kubernetes resources. Reference objects rather than juggling string
+   references across resources.
+1. **Idiomatic Kubernetes** - We don't reinvent the wheel; no new API resources
+   to learn. We make the existing APIs easier to use while still providing
+   the full API for production use cases.
    
 The `kx` library takes full advantage of being defined in TypeScript, not in YAML.
 This enables the use of functions, overloading, type-checking, and many other 
