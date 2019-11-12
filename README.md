@@ -30,6 +30,7 @@ introduction is a good place to start.
 | :------------------------------------: | :-----------------------------------------------: |
 | ![kx example](./images/kx-example.png) | ![raw provider example](./images/raw-example.png) |
 
+![kx-up](./images/kx-up.gif)
 
 ## Installation
 
