@@ -33,8 +33,13 @@ introduction is a good place to start.
 
 ## Installation
 
-1. Run `make` to build the package.
-1. Run `npm link "@pulumi/kubernetesx"` in the project depending on kx.
+This package is available in JavaScript/TypeScript for use with Node.js.  Install it using either `npm`:
+
+    $ npm install @pulumi/kubernetesx
+
+or `yarn`:
+
+    $ yarn add @pulumi/kubernetesx
 
 ## Usage Examples
 
