@@ -26,10 +26,7 @@ If you are just getting started with Pulumi and Kubernetes, the
 [Pulumi Kubernetes](https://www.pulumi.com/docs/intro/cloud-providers/kubernetes/)
 introduction is a good place to start.
 
-| kx                           | raw provider                  |
-| :--------------------------: | :---------------------------: |
-| ![](./images/kx-example.png) | ![](./images/raw-example.png) |
-
+![kx example](./images/kx-example.png "kx") | ![raw provider example](./images/raw-example.png "raw provider")
 
 ## Installation
 
