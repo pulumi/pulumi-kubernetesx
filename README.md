@@ -1,3 +1,6 @@
+> Note: This library is under active development and subject to change. Not yet recommended
+for production workloads.
+
 # Pulumi Kubernetes Extensions
 
 _Kubernetes for Humans_
@@ -25,9 +28,6 @@ richer API design tools than are available using YAML or Helm.
 If you are just getting started with Pulumi and Kubernetes, the 
 [Pulumi Kubernetes](https://www.pulumi.com/docs/intro/cloud-providers/kubernetes/)
 introduction is a good place to start.
-
-> Note: This library is still in active development and subject to change. Not yet recommended
-for production workloads.
 
 | kx                                     | raw provider                                      |
 | :------------------------------------: | :-----------------------------------------------: |
