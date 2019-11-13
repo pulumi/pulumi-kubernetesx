@@ -23,12 +23,6 @@ export namespace types {
         ClusterIP = "ClusterIP",
         LoadBalancer = "LoadBalancer",
     }
-    export type ServiceArgs = {
-        type?: pulumi.Input<types.ServiceType>,
-        ports?: pulumi.Input<types.PortMap>,
-        selector?: pulumi.Input<{[key: string]: pulumi.Input<string>}>,
-    };
-
     export type VolumeMount = {
         volume: pulumi.Input<k8s.types.input.core.v1.Volume>,
         destPath: pulumi.Input<string>,
@@ -255,22 +249,27 @@ export class Deployment extends k8s.apps.v1.Deployment {
         this.opts = opts;
     }
 
-    // TODO: will want to create input type based on ServiceSpec
-    public createService(args?: {type?: pulumi.Input<types.ServiceType | string>}) {
-        const serviceSpec = this.spec.template.spec.containers.apply(containers => {
-            const ports: Record<string, number> = {};
-            containers.forEach(container => {
-                container.ports.forEach(port => {
-                    ports[port.name] = port.containerPort;
+    public createService(args: types.ServiceSpec = {}) {
+        const serviceSpec = pulumi
+            .all([this.spec.template.spec.containers, args])
+            .apply(([containers, args]) => {
+                // TODO: handle merging ports from args
+                const ports: Record<string, number> = {};
+                containers.forEach(container => {
+                    if (container.ports) {
+                        container.ports.forEach(port => {
+                            ports[port.name] = port.containerPort;
+                        });
+                    }
                 });
+                return {
+                    ...args,
+                    ports: args.ports || ports,
+                    selector: this.spec.selector.matchLabels,
+                    // TODO: probably need to unwrap args.type in case it's a computed value
+                    type: args && args.type as string,
+                };
             });
-            return {
-                ports: ports,
-                selector: this.spec.selector.matchLabels,
-                // TODO: probably need to unwrap args.type in case it's a computed value
-                type: args && args.type as string,
-            };
-        });
 
         return new Service(this.name, {
             spec: serviceSpec,
