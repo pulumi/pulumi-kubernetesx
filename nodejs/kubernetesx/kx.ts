@@ -14,6 +14,7 @@
 
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
+import PodBuilderDeploymentSpec = types.PodBuilderDeploymentSpec;
 
 export namespace types {
     export type EnvMap = Record<string, pulumi.Input<string | k8s.types.input.core.v1.EnvVarSource>>;
@@ -62,10 +63,12 @@ export namespace types {
     export type JobSpec = Omit<k8s.types.input.batch.v1.JobSpec, "template"> & {
         template: pulumi.Input<Pod>,
     };
-    export type PodBuilderJobSpec = Omit<k8s.types.input.batch.v1.JobSpec, "template">;
     export type Job = Omit<k8s.types.input.batch.v1.Job, "spec"> & {
         spec: pulumi.Input<JobSpec | k8s.types.input.batch.v1.JobSpec>,
     };
+
+    export type PodBuilderDeploymentSpec = Omit<k8s.types.input.apps.v1.DeploymentSpec, "selector"|"template">;
+    export type PodBuilderJobSpec = Omit<k8s.types.input.batch.v1.JobSpec, "template">;
 }
 
 function buildPodSpec(args: pulumi.Input<types.PodSpec>): pulumi.Output<k8s.types.input.core.v1.PodSpec> {
@@ -161,11 +164,16 @@ export class PodBuilder {
         });
     }
 
-    public asDeploymentSpec(args?: {replicas?: number}): pulumi.Output<k8s.types.input.apps.v1.DeploymentSpec> {
+    public asDeploymentSpec(
+        args?: types.PodBuilderDeploymentSpec,
+        ): pulumi.Output<k8s.types.input.apps.v1.DeploymentSpec> {
         const appLabels = { app: this.podName };
+
+        const _args = args || {};
         const deploymentSpec: k8s.types.input.apps.v1.DeploymentSpec = {
+            ..._args,
             selector: { matchLabels: appLabels },
-            replicas: args && args.replicas || 1,
+            replicas: _args.replicas || 1,
             template: {
                 metadata: { labels: appLabels },
                 spec: this.podSpec,
