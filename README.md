@@ -185,7 +185,7 @@ const pb = new kx.PodBuilder({
 
 [Get Started with Kubernetes](https://www.pulumi.com/docs/get-started/kubernetes/)
 
-[Kubernetes Tutorials](https://www.pulumi.com/docs/tutorials/kubernetes/)
+[Crosswalk for Kubernetes](https://www.pulumi.com/docs/guides/crosswalk/kubernetes)
 
 [Pulumi: A Better Way to Kubernetes](https://www.pulumi.com/blog/pulumi-a-better-way-to-kubernetes/)
 
