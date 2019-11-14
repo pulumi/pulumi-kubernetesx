@@ -1,3 +1,6 @@
+> Note: This library is under active development and subject to change. Not yet recommended
+for production workloads.
+
 # Pulumi Kubernetes Extensions
 
 _Kubernetes for Humans_
