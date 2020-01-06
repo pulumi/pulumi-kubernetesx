@@ -325,11 +325,11 @@ export class Service extends k8s.core.v1.Service {
             opts);
 
         this.endpoint = this.status.loadBalancer.ingress.apply(ingress => {
-            if (ingress.length > 0) {
+            if (ingress && ingress.length > 0) {
                 return ingress[0].ip || ingress[0].hostname;
             }
             return "";
-        });
+        }) || pulumi.output("");
     }
 }
 
