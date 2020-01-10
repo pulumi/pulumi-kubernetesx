@@ -292,7 +292,7 @@ export class Service extends k8s.core.v1.Service {
             .apply((args: pulumi.UnwrappedObject<types.Service>) => {
                 const isPortMap = (ports: any): ports is types.PortMap => ports.length === undefined;
 
-                const ports: k8s.types.input.core.v1.ServicePort[] = [];
+                let ports: k8s.types.input.core.v1.ServicePort[] = [];
                 const portsArg = args.spec.ports;
                 if (portsArg) {
                     if (isPortMap(portsArg)) {
@@ -301,7 +301,7 @@ export class Service extends k8s.core.v1.Service {
                             ports.push({name: key, port: value});
                         });
                     } else {
-                        ports.concat(...portsArg);
+                        ports = portsArg;
                     }
                 }
                 return {
