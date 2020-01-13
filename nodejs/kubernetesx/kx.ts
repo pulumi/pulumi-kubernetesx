@@ -280,6 +280,7 @@ export class Deployment extends k8s.apps.v1.Deployment {
             });
 
         return new Service(this.name, {
+            metadata: { namespace: this.metadata.namespace },
             spec: serviceSpec,
         }, {...this.opts, parent: this});
     }
