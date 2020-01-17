@@ -287,6 +287,12 @@ export class Deployment extends k8s.apps.v1.Deployment {
 }
 
 export class Service extends k8s.core.v1.Service {
+    /**
+     * Endpoint of the Service. This can be either an IP address or a hostname,
+     * depending on the k8s cluster provider.
+     */
+    public endpoint: pulumi.Output<string>;
+
     constructor(name: string, args: types.Service, opts?: pulumi.CustomResourceOptions) {
 
         const spec = pulumi.output(args)
@@ -318,6 +324,13 @@ export class Service extends k8s.core.v1.Service {
                 spec: spec,
             },
             opts);
+
+        this.endpoint = this.status.loadBalancer.ingress.apply(ingress => {
+            if (ingress && ingress.length > 0) {
+                return ingress[0].ip || ingress[0].hostname;
+            }
+            return "";
+        }) || pulumi.output("");
     }
 }
 
