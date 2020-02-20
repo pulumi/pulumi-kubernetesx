@@ -326,13 +326,14 @@ export class Service extends k8s.core.v1.Service {
      * depending on the k8s cluster provider.
      */
     get endpoint(): pulumi.Output<string> {
-        return this.status.loadBalancer.ingress
-            .apply((ingress: k8s.types.output.core.v1.LoadBalancerIngress[]) => {
-            if (ingress.length > 0) {
-                return ingress[0].ip || ingress[0].hostname;
-            }
-            return "";
-        });
+        return pulumi
+            .all([this.status.loadBalancer.ingress, this.spec.clusterIP])
+            .apply(([ingresses, clusterIP]: [k8s.types.output.core.v1.LoadBalancerIngress[], string]) => {
+                if (ingresses?.length > 0) {
+                    return ingresses[0].ip || ingresses[0].hostname;
+                }
+                return clusterIP;
+            });
     }
 }
 
