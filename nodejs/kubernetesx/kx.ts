@@ -365,28 +365,6 @@ export class StatefulSet extends pulumi.ComponentResource {
         this.name = name;
         this.opts = opts;
 
-        const serviceSpec = statefulSet.spec.template.spec.containers.apply(containers => {
-            const ports: Record<string, number> = {};
-            containers.forEach(container => {
-                container.ports.forEach(port => {
-                    ports[port.name] = port.containerPort;
-                });
-            });
-            return {
-                ports: ports,
-                selector: statefulSet.spec.selector.matchLabels,
-                clusterIP: "None",
-            };
-        });
-
-        const service = new Service(
-            name, {
-                metadata: {
-                    name: `${name}-service`,
-                },
-                spec: serviceSpec,
-            }, {...opts, parent: this});
-
     }
 }
 
