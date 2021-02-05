@@ -37,7 +37,7 @@ export namespace types {
     };
     export type PodSpec = Omit<k8s.types.input.core.v1.PodSpec, "containers"|"initContainers"> & {
         containers: pulumi.Input<pulumi.Input<Container>[]>,
-        initContainers: pulumi.Input<pulumi.Input<Container>[]>,
+        initContainers?: pulumi.Input<pulumi.Input<Container>[]>,
     };
     export type Pod = Omit<k8s.types.input.core.v1.Pod, "spec"> & {
         spec: pulumi.Input<PodSpec | PodBuilder>,
@@ -75,7 +75,10 @@ export namespace types {
 function buildPodSpec(args: pulumi.Input<types.PodSpec>): pulumi.Output<k8s.types.input.core.v1.PodSpec> {
     return pulumi.output<types.PodSpec>(args).apply(podSpec => {
         const volumes: k8s.types.input.core.v1.Volume[] = [];
-        const initContainers = podSpec.initContainers.map(container => buildContainer(container, volumes));
+        let initContainers: k8s.types.input.core.v1.Container[] = [];
+        if (podSpec.initContainers) {
+            initContainers = podSpec.initContainers.map(container => buildContainer(container, volumes));
+        }
         const containers = podSpec.containers.map(container => buildContainer(container, volumes));
         return pulumi.output({
             ...podSpec,
