@@ -35,8 +35,9 @@ export namespace types {
         ports?: pulumi.Input<pulumi.Input<k8s.types.input.core.v1.ContainerPort>[] | PortMap>,
         volumeMounts?: pulumi.Input<pulumi.Input<k8s.types.input.core.v1.VolumeMount | VolumeMount>[]>,
     };
-    export type PodSpec = Omit<k8s.types.input.core.v1.PodSpec, "containers"> & {
+    export type PodSpec = Omit<k8s.types.input.core.v1.PodSpec, "containers"|"initContainers"> & {
         containers: pulumi.Input<pulumi.Input<Container>[]>,
+        initContainers?: pulumi.Input<pulumi.Input<Container>[]>,
     };
     export type Pod = Omit<k8s.types.input.core.v1.Pod, "spec"> & {
         spec: pulumi.Input<PodSpec | PodBuilder>,
@@ -73,77 +74,15 @@ export namespace types {
 
 function buildPodSpec(args: pulumi.Input<types.PodSpec>): pulumi.Output<k8s.types.input.core.v1.PodSpec> {
     return pulumi.output<types.PodSpec>(args).apply(podSpec => {
-        const containers: k8s.types.input.core.v1.Container[] = [];
         const volumes: k8s.types.input.core.v1.Volume[] = [];
-        const isEnvMap = (env: any): env is pulumi.UnwrappedObject<types.EnvMap> => env.length === undefined;
-        const isPortMap = (ports: any): ports is pulumi.UnwrappedObject<types.PortMap> => ports.length === undefined;
-        const isMountObject = (object: any): object is pulumi.UnwrappedObject<types.VolumeMount> => object.hasOwnProperty("volume");
-        podSpec.containers.forEach(container => {
-            const c: pulumi.UnwrappedObject<k8s.types.input.core.v1.Container> = {
-                ...container,
-                env: [],
-                name: "",
-                ports: [],
-                volumeMounts: [],
-            };
-            if (container.name) {
-                c.name = container.name;
-            } else {
-                const re = /(.*\/|^)(?<image>\w+)(:(?<tag>.*))?/;
-                const imageArg = container.image || "";
-                const result = re.exec(imageArg);
-                if (!result) {
-                    throw new Error("Failed to parse image name from " + imageArg);
-                }
-                c.name = result[2];
-            }
-            const env = container.env;
-            if (env) {
-                if (isEnvMap(env)) {
-                    Object.keys(env).forEach(key => {
-                        const value = env[key];
-                        if (typeof value === "string") {
-                            c.env!.push({name: key, value: value});
-                        } else {
-                            c.env!.push({name: key, valueFrom: value});
-                        }
-                    });
-                } else {
-                    c.env = env;
-                }
-            }
-            const ports = container.ports;
-            if (ports) {
-                if (isPortMap(ports)) {
-                    Object.keys(ports).forEach(key => {
-                        const value = ports[key];
-                        c.ports!.push({name: key, containerPort: value});
-                    });
-                } else {
-                    c.ports = ports;
-                }
-            }
-            const volumeMounts = container.volumeMounts;
-            if (volumeMounts) {
-                volumeMounts.forEach(mount => {
-                    if (isMountObject(mount)) {
-                        c.volumeMounts!.push({
-                            name: mount.volume.name,
-                            mountPath: mount.destPath,
-                            subPath: mount.srcPath,
-                        });
-                        volumes.push({
-                            ...mount.volume,
-                        });
-                    } else {
-                        c.volumeMounts!.push(mount);
-                    }
-                });
-            }
-            containers.push(c);
-        });
+        let initContainers: k8s.types.input.core.v1.Container[] = [];
+        if (podSpec.initContainers) {
+            initContainers = podSpec.initContainers.map(container => buildContainer(container, volumes));
+        }
+        const containers = podSpec.containers.map(container => buildContainer(container, volumes));
         return pulumi.output({
             ...podSpec,
+            initContainers: initContainers,
             containers: containers,
             volumes: [
                 ...podSpec.volumes || [],
@@ -151,6 +90,74 @@ function buildPodSpec(args: pulumi.Input<types.PodSpec>): pulumi.Output<k8s.type
             ],
         });
     });
+}
+
+function buildContainer(container: pulumi.UnwrappedObject<types.Container>, volumes: k8s.types.input.core.v1.Volume[]): k8s.types.input.core.v1.Container {
+    const isEnvMap = (env: any): env is pulumi.UnwrappedObject<types.EnvMap> => env.length === undefined;
+    const isPortMap = (ports: any): ports is pulumi.UnwrappedObject<types.PortMap> => ports.length === undefined;
+    const isMountObject = (object: any): object is pulumi.UnwrappedObject<types.VolumeMount> => object.hasOwnProperty("volume");
+    const c: pulumi.UnwrappedObject<k8s.types.input.core.v1.Container> = {
+        ...container,
+        env: [],
+        name: "",
+        ports: [],
+        volumeMounts: [],
+    };
+    if (container.name) {
+        c.name = container.name;
+    } else {
+        const re = /(.*\/|^)(?<image>\w+)(:(?<tag>.*))?/;
+        const imageArg = container.image || "";
+        const result = re.exec(imageArg);
+        if (!result) {
+            throw new Error("Failed to parse image name from " + imageArg);
+        }
+        c.name = result[2];
+    }
+    const env = container.env;
+    if (env) {
+        if (isEnvMap(env)) {
+            Object.keys(env).forEach(key => {
+                const value = env[key];
+                if (typeof value === "string") {
+                    c.env!.push({name: key, value: value});
+                } else {
+                    c.env!.push({name: key, valueFrom: value});
+                }
+            });
+        } else {
+            c.env = env;
+        }
+    }
+    const ports = container.ports;
+    if (ports) {
+        if (isPortMap(ports)) {
+            Object.keys(ports).forEach(key => {
+                const value = ports[key];
+                c.ports!.push({name: key, containerPort: value});
+            });
+        } else {
+            c.ports = ports;
+        }
+    }
+    const volumeMounts = container.volumeMounts;
+    if (volumeMounts) {
+        volumeMounts.forEach(mount => {
+            if (isMountObject(mount)) {
+                c.volumeMounts!.push({
+                    name: mount.volume.name,
+                    mountPath: mount.destPath,
+                    subPath: mount.srcPath,
+                });
+                volumes.push({
+                    ...mount.volume,
+                });
+            } else {
+                c.volumeMounts!.push(mount);
+            }
+        });
+    }
+    return c;
 }
 
 export class PodBuilder {
