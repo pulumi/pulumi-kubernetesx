@@ -52,6 +52,9 @@ export namespace types {
         ports?: pulumi.Input<pulumi.Input<k8s.types.input.core.v1.ServicePort>[] | PortMap>,
         type?: pulumi.Input<ServiceType | string>,
     };
+    export type CreateServiceArgs = ServiceSpec & {
+      metadata?: k8s.types.input.meta.v1.ObjectMeta;
+    };
     export type Service = Omit<k8s.types.input.core.v1.Service, "spec"> & {
         spec: pulumi.Input<ServiceSpec>,
     };
@@ -264,10 +267,11 @@ export class Deployment extends k8s.apps.v1.Deployment {
         this.opts = opts;
     }
 
-    public createService(args: types.ServiceSpec = {}) {
+    public createService(args: types.CreateServiceArgs = {}) {
+        const { metadata, ...spec } = args;
         const serviceSpec = pulumi
-            .all([this.spec.template.spec.containers, args])
-            .apply(([containers, args]) => {
+            .all([this.spec.template.spec.containers, spec])
+            .apply(([containers, spec]) => {
                 // TODO: handle merging ports from args
                 const ports: Record<string, number> = {};
                 containers.forEach(container => {
@@ -278,16 +282,19 @@ export class Deployment extends k8s.apps.v1.Deployment {
                     }
                 });
                 return {
-                    ...args,
-                    ports: args.ports || ports,
+                    ...spec,
+                    ports: spec.ports || ports,
                     selector: this.spec.selector.matchLabels,
                     // TODO: probably need to unwrap args.type in case it's a computed value
-                    type: args && args.type as string,
+                    type: spec && spec.type as string,
                 };
             });
 
-        return new Service(this.name, {
-            metadata: { namespace: this.metadata.namespace },
+        return new Service(String(metadata?.name) ?? this.name, {
+            metadata: {
+                namespace: this.metadata.namespace,
+                name: metadata?.name ?? this.metadata.name,
+            },
             spec: serviceSpec,
         }, {...this.opts, parent: this});
     }
