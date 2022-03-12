@@ -106,13 +106,13 @@ function buildContainer(container: pulumi.UnwrappedObject<types.Container>, volu
     if (container.name) {
         c.name = container.name;
     } else {
-        const re = /(.*\/|^)(?<image>\w+)(:(?<tag>.*))?/;
+        const re = /(?:.+\/)?([^:]+)(?::.+)?/;
         const imageArg = container.image || "";
         const result = re.exec(imageArg);
         if (!result) {
             throw new Error("Failed to parse image name from " + imageArg);
         }
-        c.name = result[2];
+        c.name = result[1];
     }
     const env = container.env;
     if (env) {
