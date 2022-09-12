@@ -70,6 +70,7 @@ export namespace types {
 
     export type PodBuilderDeploymentSpec = Omit<k8s.types.input.apps.v1.DeploymentSpec, "selector"|"template">;
     export type PodBuilderJobSpec = Omit<k8s.types.input.batch.v1.JobSpec, "template">;
+    export type PodBuilderStatefulSetSpec = Omit<k8s.types.input.apps.v1.StatefulSetSpec, "selector"|"template"|"serviceName">;
 }
 
 function buildPodSpec(args: pulumi.Input<types.PodSpec>): pulumi.Output<k8s.types.input.core.v1.PodSpec> {
@@ -149,9 +150,11 @@ function buildContainer(container: pulumi.UnwrappedObject<types.Container>, volu
                     mountPath: mount.destPath,
                     subPath: mount.srcPath,
                 });
-                volumes.push({
-                    ...mount.volume,
-                });
+                if (!volumes.find(vol => vol.name === mount.volume.name)) {
+                  volumes.push({
+                      ...mount.volume,
+                  });
+                }
             } else {
                 c.volumeMounts!.push(mount);
             }
@@ -189,7 +192,7 @@ export class PodBuilder {
         return pulumi.output(deploymentSpec);
     }
 
-    public asStatefulSetSpec(args?: {replicas?: number}): pulumi.Output<k8s.types.input.apps.v1.StatefulSetSpec> {
+    public asStatefulSetSpec(args?: types.PodBuilderStatefulSetSpec): pulumi.Output<k8s.types.input.apps.v1.StatefulSetSpec> {
         const appLabels = { app: this.podName };
         const statefulSetSpec: k8s.types.input.apps.v1.StatefulSetSpec = {
             selector: { matchLabels: appLabels },
@@ -199,6 +202,7 @@ export class PodBuilder {
                 metadata: { labels: appLabels },
                 spec: this.podSpec,
             },
+            volumeClaimTemplates: args?.volumeClaimTemplates
         };
         return pulumi.output(statefulSetSpec);
     }
@@ -350,7 +354,17 @@ export class StatefulSet extends pulumi.ComponentResource {
     constructor(name: string, args: types.StatefulSet, opts?: pulumi.CustomResourceOptions) {
         const spec: pulumi.Output<k8s.types.input.apps.v1.StatefulSetSpec> = pulumi.output<types.StatefulSet>(args)
             .apply(args => {
-                const podSpec = buildPodSpec(args.spec.template.spec as types.PodSpec);
+              const podSpec = buildPodSpec(args.spec.template.spec as types.PodSpec)
+                // filter out volumes that are specified in volumeClaimTemplates
+                .apply(spec => {
+                  spec.volumes = pulumi.output(spec.volumes).apply(vols =>
+                    vols?.filter(vol =>
+                      !args.spec.volumeClaimTemplates?.map(vct => vct.metadata?.name).includes(vol.name)
+                    ) || []
+                  )
+                  return spec
+                });
+
                 return pulumi.output({
                     ...args.spec,
                     serviceName: `${name}-service`,
@@ -480,4 +494,32 @@ export class Secret extends k8s.core.v1.Secret {
             },
         });
     }
+}
+
+export class Volume {
+  args: k8s.types.input.core.v1.Volume
+
+  constructor(args: k8s.types.input.core.v1.Volume) {
+    this.args = args
+  }
+
+  public mount(destPath: pulumi.Input<string>, srcPath?: pulumi.Input<string>): pulumi.Output<types.VolumeMount> {
+    return pulumi.output({
+        volume: this.args,
+        destPath: destPath,
+        srcPath: srcPath,
+    });
+  }
+
+  public asVolumeClaimTemplate(
+    args: k8s.types.input.core.v1.PersistentVolumeClaim
+  ): pulumi.Output<k8s.types.input.core.v1.PersistentVolumeClaim> {
+      return pulumi.output({
+        metadata: {
+          name: this.args.name,
+          ...args.metadata
+        },
+        spec: args.spec
+      })
+  }
 }
